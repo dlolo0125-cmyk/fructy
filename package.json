@@ -1,0 +1,15 @@
+{
+  "name": "fruty",
+  "version": "9.0.0",
+  "private": true,
+  "description": "Fruty V9 - application web, espace client, administration et paiements Chariow",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning server.js",
+    "migrate": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning backend/database/migrate.js",
+    "verify:migration": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning tests/verify-migration.js",
+    "test:features": "node --disable-warning=ExperimentalWarning tests/verify-feature-migration.js && node --disable-warning=ExperimentalWarning tests/verify-runtime-features.js && node --disable-warning=ExperimentalWarning tests/verify-saspay.js"
+  },
+  "engines": {
+    "node": ">=22.13.0 <23"
+  }
+}

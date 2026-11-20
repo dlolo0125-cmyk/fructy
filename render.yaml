@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: sikaplus-v6
+    runtime: node
+    region: virginia
+    plan: 0.5c-512mb
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    autoDeployTrigger: commit
+    disk:
+      name: sikaplus-v6-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
+      - key: SECRET
+        generateValue: true
+      - key: ADMIN_PHONE
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: CHARIOW_PRODUCT_ID
+        value: prd_qc1stvd5
+      - key: CHARIOW_PRODUCT_ID_M1
+        sync: false
+      - key: CHARIOW_PRODUCT_ID_M2
+        sync: false
+      - key: CHARIOW_PRODUCT_ID_M3
+        sync: false
+      - key: CHARIOW_PRODUCT_ID_M4
+        sync: false
+      - key: CHARIOW_PRODUCT_ID_M5
+        sync: false
+      - key: CHARIOW_API_KEY
+        sync: false
+      - key: CHARIOW_PULSE_SECRET
+        sync: false
+      - key: SASPAY_API_KEY
+        sync: false
+      - key: SASPAY_WEBHOOK_SECRET
+        sync: false
+      - key: SASPAY_NETWORK_TMONEY
+        value: tmoney_tg
+      - key: SASPAY_NETWORK_FLOOZ
+        value: moov_tg
+      - key: APP_BASE_URL
+        sync: false
