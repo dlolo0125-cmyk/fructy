@@ -1,7 +1,7 @@
 'use strict';
 /* Fruty : serveur autonome, zéro dépendance. Node >= 22.13. Lancer : node server.js */
 const {DatabaseSync}=require('node:sqlite'),http=require('http'),fs=require('fs'),path=require('path'),crypto=require('crypto');
-const PORT=+process.env.PORT||3000,PUBLIC_LINKS=Object.freeze({channel_url:(()=>{try{const u=new URL(process.env.FRUTY_CHANNEL_URL||'');return /^https?:$/.test(u.protocol)?u.toString():''}catch{return ''}})(),assistant_url:(()=>{try{const u=new URL(process.env.FRUTY_ASSISTANT_URL||'');return /^https?:$/.test(u.protocol)?u.toString():''}catch{return ''}})()}),DEPOSIT_METHODS=Object.freeze(Object.fromEntries([1,2,3,4,5].map(n=>[n,(process.env['DEPOSIT_METHOD_'+n]||(n===1?'saspay':'')).toLowerCase()]))),SASPAY_API_KEY=process.env.SASPAY_API_KEY||'',SASPAY_WEBHOOK_SECRET=process.env.SASPAY_WEBHOOK_SECRET||'',SASPAY_BASE=(process.env.SASPAY_BASE_URL||((process.env.SASPAY_API_KEY||'').startsWith('sk_test_')?'https://sandbox-api.saspay.me/api/v1':'https://api.saspay.me/api/v1')).replace(/\/$/,''),SASPAY_NETWORKS=Object.freeze({'T-Money':process.env.SASPAY_NETWORK_TMONEY||'tmoney_tg','Flooz':process.env.SASPAY_NETWORK_FLOOZ||'moov_tg'}),CHARIOW_API_KEY=process.env.CHARIOW_API_KEY||'',DEPOSIT_MIN=1000,DEPOSIT_MAX=100000,CHARIOW_PRODUCT_IDS=Object.freeze(Object.fromEntries([1,2,3,4,5].map(n=>[n,process.env['CHARIOW_PRODUCT_ID_M'+n]||process.env.CHARIOW_PRODUCT_ID||'prd_qc1stvd5']))),CHARIOW_PULSE_SECRET=process.env.CHARIOW_PULSE_SECRET||'',APP_BASE_URL=(process.env.APP_BASE_URL||'').replace(/\/$/,''),DATA=process.env.DATA_DIR||path.join(__dirname,'data'),PUB=path.join(__dirname,'public'),UP=path.join(DATA,'uploads'),PDF=path.join(DATA,'private-pdfs');
+const PORT=+process.env.PORT||3000,PUBLIC_LINKS=Object.freeze({channel_url:(()=>{try{const u=new URL(process.env.FRUTY_CHANNEL_URL||'');return /^https?:$/.test(u.protocol)?u.toString():''}catch{return ''}})(),assistant_url:(()=>{try{const u=new URL(process.env.FRUTY_ASSISTANT_URL||'');return /^https?:$/.test(u.protocol)?u.toString():''}catch{return ''}})()}),DEPOSIT_METHODS=Object.freeze(Object.fromEntries([1,2,3,4,5].map(n=>[n,(process.env['DEPOSIT_METHOD_'+n]||(n===1?'chariow':n===2?'saspay':'')).toLowerCase()]))),SASPAY_API_KEY=process.env.SASPAY_API_KEY||'',SASPAY_WEBHOOK_SECRET=process.env.SASPAY_WEBHOOK_SECRET||'',SASPAY_BASE=(process.env.SASPAY_BASE_URL||((process.env.SASPAY_API_KEY||'').startsWith('sk_test_')?'https://sandbox-api.saspay.me/api/v1':'https://api.saspay.me/api/v1')).replace(/\/$/,''),SASPAY_NETWORKS=Object.freeze({'T-Money':process.env.SASPAY_NETWORK_TMONEY||'tmoney_tg','Flooz':process.env.SASPAY_NETWORK_FLOOZ||'moov_tg'}),CHARIOW_API_KEY=process.env.CHARIOW_API_KEY||'',DEPOSIT_MIN=1000,DEPOSIT_MAX=100000,CHARIOW_AMOUNTS=Object.freeze([1000,2000,5000,10000,20000]),SASPAY_MAX=10000,CHARIOW_PRODUCT_BY_AMOUNT=Object.freeze({1000:process.env.CHARIOW_PRODUCT_ID_1000||process.env.CHARIOW_PRODUCT_ID||'prd_qc1stvd5',2000:process.env.CHARIOW_PRODUCT_ID_2000||'prd_yl93dwer',5000:process.env.CHARIOW_PRODUCT_ID_5000||'prd_lie65vzx',10000:process.env.CHARIOW_PRODUCT_ID_10000||'prd_g00q5t16',20000:process.env.CHARIOW_PRODUCT_ID_20000||'prd_vw27ffj5'}),CHARIOW_PRODUCT_IDS=Object.freeze(Object.fromEntries([1,2,3,4,5].map(n=>[n,process.env['CHARIOW_PRODUCT_ID_M'+n]||process.env.CHARIOW_PRODUCT_ID||'prd_qc1stvd5']))),CHARIOW_PULSE_SECRET=process.env.CHARIOW_PULSE_SECRET||'',APP_BASE_URL=(process.env.APP_BASE_URL||'').replace(/\/$/,''),DATA=process.env.DATA_DIR||path.join(__dirname,'data'),PUB=path.join(__dirname,'public'),UP=path.join(DATA,'uploads'),PDF=path.join(DATA,'private-pdfs');
 fs.mkdirSync(UP,{recursive:true});fs.mkdirSync(PDF,{recursive:true});
 const kf=path.join(DATA,'secret.key');if(!fs.existsSync(kf))fs.writeFileSync(kf,crypto.randomBytes(48).toString('hex'),{mode:0o600});
 const SECRET=process.env.SECRET||fs.readFileSync(kf,'utf8').trim();
@@ -141,8 +141,9 @@ const L={
 /* ---- Paiement Chariow : le serveur préremplit le checkout et le Pulse confirme le crédit ---- */
 async function createChariowDeposit(u, req, amount, method) {
  if(!Number.isInteger(amount)||amount<DEPOSIT_MIN||amount>DEPOSIT_MAX)throw new E('Le montant du dépôt doit être compris entre 1 000 et 100 000 FCFA.');
+ if(!CHARIOW_AMOUNTS.includes(amount))throw new E('Choisissez un des montants proposés : 1 000, 2 000, 5 000, 10 000 ou 20 000 FCFA.');
  if(!Number.isInteger(method)||method<1||method>5)throw new E('Choisissez une méthode de dépôt (Méthode 1 à Méthode 5).');
- const p=act(user(u.id)),productId=CHARIOW_PRODUCT_IDS[method];
+ const p=act(user(u.id)),productId=CHARIOW_PRODUCT_BY_AMOUNT[amount];
  if(!CHARIOW_API_KEY||!productId)throw new E('La méthode '+method+' n’est pas encore configurée par l’administrateur.',503);
  if(!p.nom||!p.prenom||!p.email||!p.method||!p.paynum)throw new E('Complétez d’abord vos informations dans Paramètres pour continuer.');
  const mobile=['T-Money','Flooz'].includes(p.method),buyerPhone=mobile?p.paynum:p.phone;
@@ -309,7 +310,7 @@ async function createSaspayCheckout(p,amount,number,orderId,base){
  return {id:String(d.id),url};
 }
 async function createSaspayDeposit(u,req,amount,network,phoneRaw){
- if(!Number.isInteger(amount)||amount<DEPOSIT_MIN||amount>DEPOSIT_MAX)throw new E('Le montant du dépôt doit être compris entre 1 000 et 100 000 FCFA.');
+ if(!Number.isInteger(amount)||amount<DEPOSIT_MIN||amount>SASPAY_MAX)throw new E('Avec cette méthode, le dépôt doit être compris entre 1 000 et 10 000 FCFA.');
  if(network!=='auto'&&!SASPAY_NETWORKS[network])throw new E('Choisissez une méthode de dépôt.');
  const number=normTogoPhone(phoneRaw);if(!number)throw new E('Entrez un numéro togolais valide à 8 chiffres.');
  if(!SASPAY_API_KEY)throw new E('Le dépôt en ligne n’est pas encore configuré par l’administrateur.',503);
@@ -389,7 +390,7 @@ async function api(req,res,url){
   if(q.order){const [c,d]=q.order;r.sort((x,y)=>(x[c]>y[c]?1:x[c]<y[c]?-1:0)*(d==='desc'?-1:1))}if(q.limit)r=r.slice(0,Math.min(+q.limit,200));
   return out(q.one?(r[0]||null):r)}
  if(p==='/api/config'){return out({...PUBLIC_LINKS,support_email:'sikaplus.con0125@gmail.com'})}
- if(p==='/api/deposit/methods'){U();return out([1,2,3,4,5].map(n=>({method:n,available:DEPOSIT_METHODS[n]==='saspay'?!!SASPAY_API_KEY:DEPOSIT_METHODS[n]==='chariow'?!!(CHARIOW_API_KEY&&CHARIOW_PRODUCT_IDS[n]):false})))}
+ if(p==='/api/deposit/methods'){U();return out([1,2,3,4,5].map(n=>{const pv=DEPOSIT_METHODS[n];return {method:n,available:pv==='saspay'?!!SASPAY_API_KEY:pv==='chariow'?!!CHARIOW_API_KEY:false,kind:pv==='chariow'?'fixed':pv==='saspay'?'free':null,amounts:pv==='chariow'?CHARIOW_AMOUNTS:null,min:DEPOSIT_MIN,max:pv==='saspay'?SASPAY_MAX:null}}))}
  if(p==='/api/deposit'&&post){limit('dep'+ip,8,60000);const u=U(),amount=Math.floor(+b.amount),method=Math.floor(+b.method);
   if(!Number.isInteger(method)||method<1||method>5)throw new E('Choisissez une méthode de dépôt.');
   const provider=DEPOSIT_METHODS[method];
