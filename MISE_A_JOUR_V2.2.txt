@@ -1,0 +1,53 @@
+MISE A JOUR SIKAPLUS V2.2 — WINDOWS
+
+IMPORTANT : cette archive contient le CODE, pas votre base de données personnelle.
+Elle ne contient ni data/sikaplus.db, ni data/secret.key, ni vos PDF/images.
+
+1. Ouvrez le dossier actuel SikaPlus_V2.
+2. Dans la fenêtre CMD où le serveur tourne, faites Ctrl+C.
+3. Copiez tout le dossier data dans un emplacement de sauvegarde privé.
+   Gardez impérativement data/sikaplus.db et data/secret.key.
+4. Décompressez cette archive dans un nouveau dossier.
+5. Copiez les fichiers du dossier SikaPlus_V2 extrait dans votre dossier SikaPlus_V2 actuel.
+   Acceptez le remplacement des fichiers de CODE.
+   Ne supprimez pas le dossier data existant et ne remplacez pas sa base.
+6. Dans CMD, revenez dans le dossier du projet et lancez :
+
+   npm start
+
+La migration 002 s'applique automatiquement. Une sauvegarde SQLite est créée dans data
+avant chaque nouvelle migration, avec un nom commençant par sikaplus-before-migration-.
+
+ESPACE CLIENT : http://localhost:3000/
+ADMINISTRATION : http://localhost:3000/gestion
+
+CONFIGURATION ADMINISTRATEUR
+- Ouvrez Produits puis Modifier sur chaque PDF.
+- Définissez la durée d'accès en jours.
+- Définissez le crédit promotionnel par jour dans le portefeuille d'achat.
+- Importez le PDF dans « PDF privé » pour que l'expiration soit contrôlée par le serveur.
+- Les liens PDF publics externes ne peuvent pas être révoqués par SikaPlus.
+- Les paramètres s'appliquent aux nouveaux achats. Les achats historiques sont conservés
+  comme accès sans expiration pour ne pas retirer un ancien contenu déjà acheté.
+
+EXEMPLE
+Prix : 4 000 F CFA ; durée : 2 jours ; crédit : 800 F CFA/jour.
+Le premier crédit de 800 F est ajouté le jour de l'achat, le second après 24 heures.
+L'accès expire après 48 heures. Les crédits vont dans le portefeuille d'achat et ne sont
+pas retirables en espèces. Le serveur traite les crédits dus au démarrage et toutes les
+60 secondes, même si le client n'est pas connecté.
+
+QUESTIONS QUOTIDIENNES
+- Dans l'administration, ouvrez « Questions du jour ».
+- Choisissez une date et publiez trois questions avec quatre réponses chacune.
+- Chaque bonne réponse crédite 25 F dans le portefeuille d'achat.
+- Trois bonnes réponses donnent au maximum 75 F par jour.
+- Une question ne peut être répondue qu'une seule fois par client.
+
+TESTS
+Pour lancer les tests isolés, sans toucher à votre vraie base :
+
+   npm run test:features
+
+Ne partagez jamais votre fichier .env, votre secret.key ou votre base de données contenant
+les informations personnelles et les soldes des clients.
