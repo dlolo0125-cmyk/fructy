@@ -10,6 +10,7 @@ function sendJson(res,status,body){res.writeHead(status,{'content-type':'applica
 function cookieOptions(maxAge){return `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${process.env.NODE_ENV==='production'?'; Secure':''}`}
 function readCookie(header,name){for(const part of String(header||'').split(';')){const i=part.indexOf('=');if(i>0&&part.slice(0,i).trim()===name)return decodeURIComponent(part.slice(i+1).trim())}return null}
 function setSessionCookie(res,token,expiresAt){const maxAge=Math.max(0,Math.floor((new Date(expiresAt).getTime()-Date.now())/1000));res.setHeader('set-cookie',`${COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${process.env.NODE_ENV==='production'?'; Secure':''}`)}
+async function readRawBody(req){const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>MAX_BODY)throw Object.assign(new Error('Requête trop volumineuse.'),{status:413});chunks.push(chunk)}return Buffer.concat(chunks)}
 async function readJson(req){let size=0,body='';for await(const chunk of req){size+=chunk.length;if(size>MAX_BODY)throw Object.assign(new Error('Requête trop volumineuse.'),{status:413});body+=chunk.toString('utf8')}if(!body)return {};try{const value=JSON.parse(body);if(!value||Array.isArray(value)||typeof value!=='object')throw new Error();return value}catch{throw Object.assign(new Error('Corps JSON invalide.'),{status:400})}}
 function clientIp(req){return String(req.socket.remoteAddress||'').slice(0,80)}
 const server=http.createServer(async(req,res)=>{
@@ -62,6 +63,16 @@ const server=http.createServer(async(req,res)=>{
    const body=await readJson(req);
    const result=await wallet.requestWithdrawal(user.id,{...body,idempotencyKey:req.headers['idempotency-key']});
    return sendJson(res,result.replayed?200:201,{ok:true,withdrawal:result});
+  }
+  if(pathname==='/api/webhooks/saspay'&&req.method==='POST'){
+   const raw=await readRawBody(req);
+   const result=await wallet.processDepositWebhook('saspay',raw,req.headers['x-fructy-signature']);
+   return sendJson(res,200,{ok:true,...result});
+  }
+  if(pathname==='/api/webhooks/chariow'&&req.method==='POST'){
+   const raw=await readRawBody(req);
+   const result=await wallet.processDepositWebhook('chariow',raw,req.headers['x-fructy-signature']);
+   return sendJson(res,200,{ok:true,...result});
   }
   if(pathname.startsWith('/api/'))return sendJson(res,404,{error:{code:'NOT_FOUND',message:'Route API introuvable.'},requestId});
   if(req.method!=='GET'&&req.method!=='HEAD')return sendJson(res,405,{error:{message:'Méthode non autorisée.'},requestId});
