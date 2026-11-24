@@ -64,6 +64,24 @@ const server=http.createServer(async(req,res)=>{
    const result=await wallet.requestWithdrawal(user.id,{...body,idempotencyKey:req.headers['idempotency-key']});
    return sendJson(res,result.replayed?200:201,{ok:true,withdrawal:result});
   }
+
+  if(pathname==='/api/admin/withdrawals'&&req.method==='GET'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   if(user.role!=='admin')return sendJson(res,403,{error:{code:'FORBIDDEN',message:'Accès administrateur requis.'},requestId});
+   const url=new URL(req.url,'http://localhost');
+   const limit=url.searchParams.has('limit')?Number(url.searchParams.get('limit')):25;
+   return sendJson(res,200,{ok:true,withdrawals:await wallet.listWithdrawals({status:url.searchParams.get('status'),limit,before:url.searchParams.get('before')})});
+  }
+  const reviewMatch=pathname.match(/^\\/api\\/admin\\/withdrawals\\/([0-9a-f-]{36})\\/review$/i);
+  if(reviewMatch&&req.method==='POST'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   if(user.role!=='admin')return sendJson(res,403,{error:{code:'FORBIDDEN',message:'Accès administrateur requis.'},requestId});
+   const body=await readJson(req);
+   const result=await wallet.reviewWithdrawal(user.id,reviewMatch[1],body.decision,body.note);
+   return sendJson(res,200,{ok:true,withdrawal:result});
+  }
   if(pathname==='/api/webhooks/saspay'&&req.method==='POST'){
    const raw=await readRawBody(req);
    const result=await wallet.processDepositWebhook('saspay',raw,req.headers['x-fructy-signature']);
