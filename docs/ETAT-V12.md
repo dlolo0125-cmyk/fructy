@@ -25,6 +25,12 @@ Dernière mise à jour : 24 novembre 2026.
 - Console admin V12 responsive : indicateurs de synthèse, répertoire des membres en lecture seule, liste des retraits et décisions auditées.
 - Routes d'administration protégées par session et rôle `admin` (`/api/admin/overview`, `/api/admin/users`, `/api/admin/withdrawals`).
 - Script de création du premier administrateur, à exécuter explicitement après migration sur une base de test.
+- Catalogue des produits publiés, achat atomique depuis le portefeuille dépôt et création d'un accès produit.
+- Récompenses quotidiennes de produits avec verrouillage de l'accès, numéro de journée et crédit atomique du portefeuille de gains.
+- Catalogue des formations, inscription payante/gratuite, contrôle d'accès aux leçons et sauvegarde monotone de la progression.
+- Question du jour, réponse unique par membre et crédit de récompense atomique si la réponse est correcte.
+- Migration additive `003_daily_question_rewards.sql` pour configurer la récompense des bonnes réponses.
+- Interface membre enrichie : produits, accès et réclamations de récompenses, formations et quiz quotidien.
 
 ## Création du premier administrateur
 
@@ -58,11 +64,11 @@ Les routes métier disponibles sont encore une base de développement. Elles ne 
 ## À faire avant toute recette
 
 1. Finaliser et tester l'inscription, la connexion, les sessions et les rôles, notamment avec des comptes admin réels.
-2. Tester les services de portefeuille et ledger transactionnels sur PostgreSQL.
+2. Tester les services de portefeuille, achats, inscriptions, récompenses et ledger transactionnels sur PostgreSQL.
 3. Adapter la vérification cryptographique au format officiel de signature de chaque prestataire, puis tester en sandbox avec de vrais événements avant activation.
-4. Tester les décisions de retrait et les remboursements en concurrence sur PostgreSQL ; ajouter ensuite les accès PDF privés et les règles de récompenses.
+4. Tester les décisions de retrait, remboursements, achats, inscriptions et récompenses en concurrence sur PostgreSQL ; ajouter ensuite le stockage privé et la livraison sécurisée des fichiers PDF.
 5. Réimplémenter les formations, quiz, progression et certificats.
-6. Compléter les interfaces V12 avec le catalogue de produits, les formations, les quiz et les notifications ; les interfaces actuelles couvrent seulement les portefeuilles et l'administration des membres/retraits.
+6. Compléter la console admin pour créer/publier les produits, formations, leçons et questions ; ajouter la gestion des notifications et les contrôles de compte.
 7. Ajouter les tests d'intégration PostgreSQL et les tests de parcours.
 8. Tester sur une base Neon distincte et non destructive, puis préparer la bascule Render après validation.
 
