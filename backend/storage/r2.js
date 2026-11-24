@@ -41,7 +41,7 @@ function safeFilename(value) {
 async function createDownloadUrl(key, productName) {
   const bucket = requiredEnv('R2_BUCKET');
   const objectKey = String(key || '').trim();
-  if (!objectKey || !/\\.pdf$/i.test(objectKey) || objectKey.length > 1024 || objectKey.startsWith('/') ||
+  if (!objectKey || !/\.pdf$/i.test(objectKey) || objectKey.length > 1024 || objectKey.startsWith('/') ||
       objectKey.split('/').some(part => part === '..') || /[\r\n\0]/.test(objectKey)) {
     const error = new Error('Référence de fichier invalide.');
     error.status = 500;
