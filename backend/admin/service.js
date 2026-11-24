@@ -183,4 +183,4 @@ async function setQuestionActive(adminId,id,active) {
   });
 }
 
-module.exports={getOverview,listUsers,listAdminCatalog,createProduct,updateProduct,createCategory,createCourse,setCourseStatus,createModule,createLesson,setLessonPublished,createDailyQuestion,setQuestionActive};
+module.exports={getOverview,listUsers,listAdminCatalog,createProduct,updateProduct,createCategory,createCourse,setCourseStatus,createModule,createLesson,setLessonPublished,createDailyQuestion,setQuestionActive,amountField,intField,slugify};
