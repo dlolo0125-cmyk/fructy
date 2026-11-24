@@ -242,7 +242,9 @@ const server=http.createServer(async(req,res)=>{
   if(req.method==='HEAD')return res.end();fs.createReadStream(resolved).pipe(res);
  }catch(error){
   const status=Number.isInteger(error.status)?error.status:(error.code==='23505'?409:400);
-  const message=error.code==='23505'?'Ce numéro est déjà associé à un compte.':error.message||'Une erreur est survenue.';
+  const message=error.code==='23505'
+   ?(error.constraint==='users_phone_key'?'Ce numéro est déjà associé à un compte.':'Une ressource avec ces informations existe déjà.')
+   :(error.message||'Une erreur est survenue.');
   if(status>=500)console.error('[http]',requestId,error.message);
   return sendJson(res,status,{error:{code:error.code==='23505'?'ALREADY_EXISTS':'REQUEST_FAILED',message},requestId});
  }
