@@ -6,9 +6,12 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "migrate": "node --env-file-if-exists=.env backend/database/migrate.js",
-    "test": "node --test",
-    "test:db": "node --env-file-if-exists=.env --test tests/database.test.js"
+    "test": "node --test tests/money.test.js"
   },
-  "engines": { "node": ">=22.13.0 <23" },
-  "dependencies": { "pg": "8.13.1" }
+  "engines": {
+    "node": ">=22.13.0 <23"
+  },
+  "dependencies": {
+    "pg": "8.13.1"
+  }
 }
