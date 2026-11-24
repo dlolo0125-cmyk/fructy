@@ -246,7 +246,19 @@ async function processDepositWebhook(provider, rawBody, signature) {
         provider_reference: providerReference, amount, currency: 'XOF'
       })]
     );
-    if (!inserted.rowCount) return { accepted: true, replayed: true, credited: false };
+    if (!inserted.rowCount) {
+      const prior = await tx.query(
+        `SELECT payment_intent_id,event_type FROM provider_events
+         WHERE provider=$1 AND provider_event_id=$2`,
+        [provider, eventId]
+      );
+      if (!prior.rowCount || prior.rows[0].payment_intent_id !== intentId || prior.rows[0].event_type !== eventType) {
+        const error = new Error("L'identifiant d'événement fournisseur a déjà été utilisé pour un autre paiement.");
+        error.status = 409;
+        throw error;
+      }
+      return { accepted: true, replayed: true, credited: false };
+    }
 
     const payment = await tx.query(
       `SELECT id,user_id,provider,provider_reference,amount,currency,status
