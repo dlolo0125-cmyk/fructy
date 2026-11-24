@@ -11,11 +11,15 @@ async function getDailyQuestion() {
   return result.rowCount ? result.rows[0] : null;
 }
 
-async function submitDailyAnswer(userId, questionId, selectedOption) {
-  const selected = Number(selectedOption);
-  if (!Number.isInteger(selected) || selected < 0 || selected > 3) {
+function validateSelectedOption(value) {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 3) {
     throw new TypeError('Réponse invalide.');
   }
+  return value;
+}
+
+async function submitDailyAnswer(userId, questionId, selectedOption) {
+  const selected = validateSelectedOption(selectedOption);
   return transaction(async tx => {
     const questionResult = await tx.query(
       `SELECT id,options,correct_option,reward_amount FROM daily_questions
@@ -130,4 +134,4 @@ async function claimProductReward(userId, accessId) {
   });
 }
 
-module.exports = { getDailyQuestion, submitDailyAnswer, claimProductReward };
+module.exports = { getDailyQuestion, submitDailyAnswer, claimProductReward, validateSelectedOption };
