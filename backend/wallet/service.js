@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('node:crypto');
 const { query, transaction } = require('../database/pool');
 const { parseAmount } = require('../security/money');
 
@@ -173,7 +174,146 @@ async function createDepositIntent(userId, input) {
   return { ...row, amount: String(row.amount), replayed: true };
 }
 
+function verifyWebhookSignature(provider, rawBody, signature) {
+  const envName = provider === 'saspay' ? 'SASPAY_WEBHOOK_SECRET'
+    : provider === 'chariow' ? 'CHARIOW_WEBHOOK_SECRET' : null;
+  if (!envName) throw new TypeError('Prestataire webhook non pris en charge.');
+  const secret = process.env[envName];
+  if (!secret) {
+    const error = new Error(`Secret webhook manquant : configure ${envName}.`);
+    error.status = 503;
+    throw error;
+  }
+  const supplied = String(signature ?? '').replace(/^sha256=/i, '').trim().toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(supplied)) return false;
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest();
+  const received = Buffer.from(supplied, 'hex');
+  return received.length === expected.length && crypto.timingSafeEqual(received, expected);
+}
+
+async function processDepositWebhook(provider, rawBody, signature) {
+  if (!Buffer.isBuffer(rawBody) || rawBody.length === 0 || rawBody.length > 32768) {
+    const error = new Error('Corps webhook invalide.');
+    error.status = 400;
+    throw error;
+  }
+  if (!verifyWebhookSignature(provider, rawBody, signature)) {
+    const error = new Error('Signature webhook invalide.');
+    error.status = 401;
+    throw error;
+  }
+
+  let event;
+  try { event = JSON.parse(rawBody.toString('utf8')); }
+  catch {
+    const error = new Error('JSON webhook invalide.');
+    error.status = 400;
+    throw error;
+  }
+  if (!event || typeof event !== 'object' || Array.isArray(event)) {
+    const error = new Error('Événement webhook invalide.');
+    error.status = 400;
+    throw error;
+  }
+
+  const eventId = String(event.event_id ?? '').trim();
+  const intentId = String(event.payment_intent_id ?? '').trim();
+  const providerReference = String(event.provider_reference ?? '').trim();
+  const eventType = String(event.event_type ?? '');
+  if (!/^[A-Za-z0-9._:-]{1,160}$/.test(eventId) ||
+      !/^[0-9a-f-]{36}$/i.test(intentId) ||
+      providerReference.length < 1 || providerReference.length > 160 ||
+      eventType !== 'payment.succeeded') {
+    const error = new Error('Événement de paiement incomplet ou non pris en charge.');
+    error.status = 400;
+    throw error;
+  }
+  const amount = parseAmount(event.amount, { min: 100, max: 1000000000 });
+  if (event.currency !== 'XOF') {
+    const error = new Error('Devise de paiement incorrecte.');
+    error.status = 409;
+    throw error;
+  }
+
+  return transaction(async tx => {
+    const inserted = await tx.query(
+      `INSERT INTO provider_events(provider,provider_event_id,payment_intent_id,event_type,signature_valid,payload)
+       VALUES($1,$2,$3,$4,true,$5::jsonb)
+       ON CONFLICT(provider,provider_event_id) DO NOTHING
+       RETURNING id`,
+      [provider, eventId, intentId, eventType, JSON.stringify({
+        event_id: eventId, event_type: eventType, payment_intent_id: intentId,
+        provider_reference: providerReference, amount, currency: 'XOF'
+      })]
+    );
+    if (!inserted.rowCount) return { accepted: true, replayed: true, credited: false };
+
+    const payment = await tx.query(
+      `SELECT id,user_id,provider,provider_reference,amount,currency,status
+       FROM payment_intents WHERE id=$1 FOR UPDATE`,
+      [intentId]
+    );
+    if (!payment.rowCount) {
+      const error = new Error('Intention de dépôt inconnue.');
+      error.status = 404;
+      throw error;
+    }
+    const intent = payment.rows[0];
+    if (intent.provider !== provider || String(intent.amount) !== String(amount) || intent.currency !== 'XOF') {
+      const error = new Error('Le prestataire, le montant ou la devise ne correspond pas au dépôt.');
+      error.status = 409;
+      throw error;
+    }
+    if (intent.status === 'succeeded') {
+      if (intent.provider_reference !== providerReference) {
+        const error = new Error('Référence fournisseur différente pour un dépôt déjà confirmé.');
+        error.status = 409;
+        throw error;
+      }
+      await tx.query('UPDATE provider_events SET processed_at=now() WHERE id=$1', [inserted.rows[0].id]);
+      return { accepted: true, replayed: false, credited: false, alreadySettled: true };
+    }
+    if (!['pending', 'processing'].includes(intent.status)) {
+      const error = new Error('Cette intention de dépôt ne peut plus être confirmée.');
+      error.status = 409;
+      throw error;
+    }
+    if (intent.provider_reference && intent.provider_reference !== providerReference) {
+      const error = new Error('Référence fournisseur incompatible.');
+      error.status = 409;
+      throw error;
+    }
+
+    const walletResult = await tx.query(
+      `SELECT id FROM wallets WHERE user_id=$1 AND wallet_type='deposit' AND currency='XOF' FOR UPDATE`,
+      [intent.user_id]
+    );
+    if (!walletResult.rowCount) {
+      const error = new Error('Portefeuille de dépôt introuvable.');
+      error.status = 500;
+      throw error;
+    }
+    const walletId = walletResult.rows[0].id;
+    await tx.query(
+      `UPDATE wallets SET balance=balance+$1,updated_at=now() WHERE id=$2`,
+      [amount, walletId]
+    );
+    await tx.query(
+      `INSERT INTO ledger_entries(wallet_id,user_id,entry_type,amount,currency,reference_type,reference_id,idempotency_key,description)
+       VALUES($1,$2,'deposit_credit',$3,'XOF','payment_intent',$4,$5,'Dépôt confirmé par webhook signé')`,
+      [walletId, intent.user_id, amount, intent.id, `deposit-credit:${intent.id}`]
+    );
+    await tx.query(
+      `UPDATE payment_intents SET status='succeeded',provider_reference=$1,confirmed_at=now()
+       WHERE id=$2`,
+      [providerReference, intent.id]
+    );
+    await tx.query('UPDATE provider_events SET processed_at=now() WHERE id=$1', [inserted.rows[0].id]);
+    return { accepted: true, replayed: false, credited: true, amount: String(amount), currency: 'XOF' };
+  });
+}
+
 module.exports = {
-  getWallets, getTransactions, requestWithdrawal, createDepositIntent,
+  getWallets, getTransactions, requestWithdrawal, createDepositIntent, processDepositWebhook, verifyWebhookSignature,
   validateIdempotencyKey, validateDestination, pageOptions
 };
