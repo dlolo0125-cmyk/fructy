@@ -62,9 +62,11 @@ async function listAdminCatalog() {
       (SELECT count(*)::int FROM course_modules m WHERE m.course_id=c.id) AS module_count
       FROM courses c ORDER BY c.created_at DESC LIMIT 100`),
     query('SELECT id,name,slug,sort_order,active FROM course_categories ORDER BY sort_order,name'),
-    query('SELECT id,question_date,prompt,options,reward_amount::text,active FROM daily_questions ORDER BY question_date DESC,id DESC LIMIT 60')
+    query('SELECT id,question_date,prompt,options,reward_amount::text,active FROM daily_questions ORDER BY question_date DESC,id DESC LIMIT 60'),
+    query('SELECT id,course_id,title,sort_order FROM course_modules ORDER BY course_id,sort_order'),
+    query('SELECT id,module_id,title,content_type,published FROM lessons ORDER BY module_id,sort_order')
   ]);
-  return { products:products.rows, courses:courses.rows, categories:categories.rows, questions:questions.rows };
+  return { products:products.rows, courses:courses.rows, categories:categories.rows, questions:questions.rows, modules:modules.rows, lessons:lessons.rows };
 }
 
 async function createProduct(adminId, input) {
