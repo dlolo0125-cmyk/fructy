@@ -30,10 +30,12 @@ Dernière mise à jour : 24 novembre 2026.
 - Catalogue des formations, inscription payante/gratuite, contrôle d'accès aux leçons et sauvegarde monotone de la progression.
 - Question du jour, réponse unique par membre et crédit de récompense atomique si la réponse est correcte.
 - Migration additive `003_daily_question_rewards.sql` pour configurer la récompense des bonnes réponses.
+- Migration `004_one_daily_question_per_day.sql` : index unique partiel pour garantir une seule question active par date.
 - Interface membre enrichie : produits, accès et réclamations de récompenses, formations, quiz quotidien et boîte de notifications.
 - Console admin de catalogue : création et publication des produits, catégories, formations, modules et leçons ; création et activation des questions quotidiennes.
 - Gestion des comptes clients : activation, mise en attente, suspension ou fermeture, avec protection des comptes administrateurs et audit.
 - Notifications ciblées ou diffusion aux membres actifs, avec journalisation admin ; boîte de réception membre et marquage comme lu.
+- Contrôle de statut des comptes clients avec audit ; les comptes administrateurs sont protégés contre les modifications via cette console.
 - Tests unitaires de validation des champs catalogue : montants entiers, plages d'entiers et slugs.
 
 ## Création du premier administrateur
@@ -73,7 +75,7 @@ Les routes métier disponibles sont encore une base de développement. Elles ne 
 4. Tester les décisions de retrait, remboursements, achats, inscriptions et récompenses en concurrence sur PostgreSQL ; ajouter ensuite le stockage privé et la livraison sécurisée des fichiers PDF.
 5. Finaliser les formations, quiz, progression, certificats et parcours de contenu ; les fonctions principales sont écrites mais restent à valider.
 6. Ajouter les modifications complètes et suppressions contrôlées des contenus, les fichiers privés et les règles d'accès ; la création/publication, les notifications et les statuts de comptes sont désormais présents.
-7. Ajouter les tests d'intégration PostgreSQL et les tests de parcours.
+7. Ajouter les tests d'intégration PostgreSQL et les tests de parcours ; l'exécution CI n'a pas encore été confirmée.
 8. Tester sur une base Neon distincte et non destructive, puis préparer la bascule Render après validation.
 
 Aucun compte, solde ou historique de l'ancienne base n'a été migré ni supprimé.
