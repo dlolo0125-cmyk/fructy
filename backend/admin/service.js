@@ -183,4 +183,36 @@ async function setQuestionActive(adminId,id,active) {
   });
 }
 
-module.exports={getOverview,listUsers,listAdminCatalog,createProduct,updateProduct,createCategory,createCourse,setCourseStatus,createModule,createLesson,setLessonPublished,createDailyQuestion,setQuestionActive,amountField,intField,slugify};
+
+async function setUserStatus(adminId,userId,status) {
+  if(!['active','pending','suspended','closed'].includes(status)) throw new TypeError('Statut de compte invalide.');
+  return transaction(async tx=>{
+    const target=await tx.query('SELECT id,role,status FROM users WHERE id=$1 FOR UPDATE',[userId]);
+    if(!target.rowCount){const e=new Error('Membre introuvable.');e.status=404;throw e;}
+    if(target.rows[0].role==='admin') {const e=new Error('La modification des comptes administrateurs est interdite depuis cette console.');e.status=403;throw e;}
+    const updated=await tx.query('UPDATE users SET status=$2,updated_at=now() WHERE id=$1 RETURNING id,phone,status',[userId,status]);
+    await audit(tx,adminId,'user.status','user',userId,{from:target.rows[0].status,to:status});
+    return updated.rows[0];
+  });
+}
+async function sendNotification(adminId,input) {
+  const title=textField(input.title,'Titre de notification',180);
+  const body=textField(input.body,'Message',4000,false);
+  const userId=input.userId?textField(input.userId,'Identifiant membre',36):null;
+  return transaction(async tx=>{
+    let result;
+    if(userId){
+      const exists=await tx.query('SELECT id FROM users WHERE id=$1 AND status<>'closed'',[userId]);
+      if(!exists.rowCount){const e=new Error('Membre introuvable ou fermé.');e.status=404;throw e;}
+      result=await tx.query('INSERT INTO notifications(user_id,title,body) VALUES($1,$2,$3) RETURNING id,user_id,title,body,created_at',[userId,title,body]);
+    }else{
+      result=await tx.query(`INSERT INTO notifications(user_id,title,body)
+        SELECT id,$1,$2 FROM users WHERE status='active'
+        RETURNING id,user_id,title,body,created_at`,[title,body]);
+    }
+    await audit(tx,adminId,'notification.send',userId?'user':'broadcast',userId||'active-users',{title,count:result.rowCount});
+    return {count:result.rowCount};
+  });
+}
+
+module.exports={getOverview,listUsers,listAdminCatalog,createProduct,updateProduct,createCategory,createCourse,setCourseStatus,createModule,createLesson,setLessonPublished,createDailyQuestion,setQuestionActive,setUserStatus,sendNotification,amountField,intField,slugify};
