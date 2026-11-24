@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "migrate": "node --env-file-if-exists=.env backend/database/migrate.js",
-    "test": "node --test tests/money.test.js tests/auth-validation.test.js"
+    "test": "node --test tests/*.test.js"
   },
   "engines": {
     "node": ">=22.13.0 <23"
