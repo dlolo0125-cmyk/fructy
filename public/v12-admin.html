@@ -78,6 +78,7 @@ $('productForm').onsubmit=async e=>{
    if(String.fromCharCode(...signature)!=='%PDF-')throw new Error('Le fichier sélectionné ne semble pas être un vrai PDF.');
    message('msg','Préparation de l’envoi sécurisé du PDF…');
    const signed=await api('/api/admin/storage/upload-url',{method:'POST',body:JSON.stringify({filename:file.name,size:file.size,contentType:'application/pdf'})});
+   delete x.pdfFile;
    const uploaded=await fetch(signed.upload.url,{method:'PUT',headers:{'content-type':'application/pdf'},body:file});
    if(!uploaded.ok)throw new Error('Échec de l’envoi vers le stockage privé. Vérifie la configuration CORS du bucket R2.');
    x.fileKey=signed.upload.key;$('productFileKey').value=x.fileKey;
