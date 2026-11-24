@@ -6,7 +6,7 @@ const { safeFilename, createDownloadUrl } = require('../backend/storage/r2');
 test('nom de téléchargement nettoyé et suffixe PDF', () => {
   assert.equal(safeFilename('Guide débutant'), 'Guide-debutant.pdf');
   assert.equal(safeFilename('mon-fichier.pdf'), 'mon-fichier.pdf');
-  assert.equal(safeFilename('../../evil\\r\\n.pdf'), 'evil.pdf');
+  assert.equal(safeFilename('../../evil\r\n.pdf'), 'evil.pdf');
 });
 
 test('URL de téléchargement refusée sans bucket R2 configuré', async () => {
