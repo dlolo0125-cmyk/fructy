@@ -22,8 +22,10 @@ function intField(value, label, min, max) {
   return number;
 }
 function slugify(value) {
-  return textField(value,'Titre',180).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  const slug=textField(value,'Titre',180).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,180);
+  if(!slug) throw new TypeError('Slug invalide.');
+  return slug;
 }
 async function audit(tx, adminId, action, targetType, targetId, details = {}) {
   await tx.query(
