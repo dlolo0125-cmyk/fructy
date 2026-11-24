@@ -37,6 +37,15 @@ Les routes métier disponibles sont encore une base de développement. Elles ne 
 - Création atomique des deux portefeuilles à l'inscription.
 - Tests de validation des numéros et mots de passe ajoutés.
 
+## Webhooks de dépôt — contrat technique provisoire
+
+- Variables serveur à configurer uniquement dans un environnement de test : `SASPAY_WEBHOOK_SECRET` et `CHARIOW_WEBHOOK_SECRET`.
+- Routes : `POST /api/webhooks/saspay` et `POST /api/webhooks/chariow`.
+- Signature interne attendue : HMAC-SHA256 du corps HTTP brut, transmise dans `X-Fructy-Signature` (hexadécimal, avec ou sans préfixe `sha256=`).
+- Champs JSON attendus : `event_id`, `event_type` (= `payment.succeeded`), `payment_intent_id`, `provider_reference`, `amount` (entier XOF), `currency` (= `XOF`).
+- Le crédit est atomique avec la mise à jour du dépôt et l'écriture du ledger. Les identifiants d'événement et la clé de crédit sont uniques.
+- **Attention : ce contrat est un adaptateur interne, pas une affirmation sur les formats officiels SasPay ou Chariow.** Il faut consulter leurs documentations et adapter la vérification de signature et le mapping des événements avant de configurer les URL de production. Ne pas inventer ni réutiliser un secret de test en production.
+
 ## À faire avant toute recette
 
 1. Finaliser et tester l'inscription, la connexion, les sessions et les rôles.
