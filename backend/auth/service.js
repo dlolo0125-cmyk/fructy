@@ -100,7 +100,7 @@ async function login(input, ip) {
     `SELECT id,phone,password_hash,role,status,referral_code,first_name,last_name,email,created_at
      FROM users WHERE phone=$1`, [phone]
   );
-  const valid = found.rowCount && await verifyPassword(password, found.rows[0].password_hash);
+  const valid = found.rowCount ? await verifyPassword(password, found.rows[0].password_hash) : await scrypt(password, Buffer.alloc(16), 64, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }).then(() => false);
   if (!valid || found.rows[0].status === 'suspended' || found.rows[0].status === 'closed') {
     await transaction(async tx => {
       await tx.query(
@@ -142,4 +142,4 @@ async function logout(token) {
   await query('UPDATE user_sessions SET revoked_at=now() WHERE token_hash=$1 AND revoked_at IS NULL', [tokenHash(token)]);
 }
 
-module.exports = { register, login, authenticate, logout, normalizePhone };
+module.exports = { register, login, authenticate, logout, normalizePhone, validatePassword };
