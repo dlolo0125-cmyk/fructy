@@ -21,6 +21,10 @@ Dernière mise à jour : 24 novembre 2026.
 - Routes authentifiées `GET /api/wallets`, `GET /api/wallets/transactions` et `POST /api/withdrawals` et `POST /api/deposits`, plus les callbacks `POST /api/webhooks/saspay` et `POST /api/webhooks/chariow`.
 - Validation des clés d'idempotence, méthodes/destinations de retrait et paramètres de pagination.
 - Administration des retraits : liste filtrable réservée aux admins, approbation sans faux statut de paiement, refus avec restitution atomique du solde et écriture ledger distincte, journal d'audit et protection contre les doubles décisions.
+- Interface membre V12 responsive : connexion/inscription, portefeuilles, historique, création d'intention de dépôt et demande de retrait.
+- Console admin V12 responsive : indicateurs de synthèse, répertoire des membres en lecture seule, liste des retraits et décisions auditées.
+- Routes d'administration protégées par session et rôle `admin` (`/api/admin/overview`, `/api/admin/users`, `/api/admin/withdrawals`).
+- Script de création du premier administrateur, à exécuter explicitement après migration sur une base de test.
 
 ## Création du premier administrateur
 
@@ -58,7 +62,7 @@ Les routes métier disponibles sont encore une base de développement. Elles ne 
 3. Adapter la vérification cryptographique au format officiel de signature de chaque prestataire, puis tester en sandbox avec de vrais événements avant activation.
 4. Tester les décisions de retrait et les remboursements en concurrence sur PostgreSQL ; ajouter ensuite les accès PDF privés et les règles de récompenses.
 5. Réimplémenter les formations, quiz, progression et certificats.
-6. Construire les interfaces client et administration V12.
+6. Compléter les interfaces V12 avec le catalogue de produits, les formations, les quiz et les notifications ; les interfaces actuelles couvrent seulement les portefeuilles et l'administration des membres/retraits.
 7. Ajouter les tests d'intégration PostgreSQL et les tests de parcours.
 8. Tester sur une base Neon distincte et non destructive, puis préparer la bascule Render après validation.
 
