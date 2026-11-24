@@ -35,13 +35,13 @@ function safeFilename(value) {
   const base = String(value || 'fructy-download')
     .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-zA-Z0-9._ -]/g, '').trim()
-    .replace(/[ .]+/g, '-').slice(0, 100) || 'fructy-download';
+    .replace(/[ .]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 100) || 'fructy-download';
   return base.endsWith('.pdf') ? base : base + '.pdf';
 }
 async function createDownloadUrl(key, productName) {
   const bucket = requiredEnv('R2_BUCKET');
   const objectKey = String(key || '').trim();
-  if (!objectKey || objectKey.length > 1024 || objectKey.startsWith('/') ||
+  if (!objectKey || !/\\.pdf$/i.test(objectKey) || objectKey.length > 1024 || objectKey.startsWith('/') ||
       objectKey.split('/').some(part => part === '..') || /[\r\n\0]/.test(objectKey)) {
     const error = new Error('Référence de fichier invalide.');
     error.status = 500;
