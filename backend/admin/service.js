@@ -16,6 +16,12 @@ function amountField(value, label, allowZero = true) {
   if ((!allowZero && amount === 0n) || amount > 9007199254740991n) throw new TypeError(label + ' hors limites.');
   return amount.toString();
 }
+function validateProductReward(price, reward) {
+  if (BigInt(reward) * 2n > BigInt(price)) {
+    throw new TypeError('La récompense quotidienne ne peut pas dépasser 50 % du prix du produit.');
+  }
+  return reward;
+}
 function intField(value, label, min, max) {
   const number = Number(value);
   if (!Number.isInteger(number) || number < min || number > max) throw new TypeError(label + ' invalide.');
@@ -73,7 +79,7 @@ async function listAdminCatalog() {
 
 async function createProduct(adminId, input) {
   const name=textField(input.name,'Nom du produit'), description=textField(input.description,'Description',5000,false);
-  const price=amountField(input.price,'Prix'), reward=amountField(input.dailyReward ?? 0,'Récompense');
+  const price=amountField(input.price,'Prix'), reward=validateProductReward(price,amountField(input.dailyReward ?? 0,'Récompense'));
   const accessDays=intField(input.accessDays ?? 0,'Durée',0,3650);
   if(accessDays===0 && reward!=='0') throw new TypeError('Une récompense exige une durée d’accès.');
   const fileKey=textField(input.fileKey,'Clé du fichier',500,false);
@@ -89,7 +95,7 @@ async function createProduct(adminId, input) {
 }
 async function updateProduct(adminId,id,input) {
   const name=textField(input.name,'Nom du produit'),description=textField(input.description,'Description',5000,false);
-  const price=amountField(input.price,'Prix'),reward=amountField(input.dailyReward ?? 0,'Récompense');
+  const price=amountField(input.price,'Prix'),reward=validateProductReward(price,amountField(input.dailyReward ?? 0,'Récompense'));
   const accessDays=intField(input.accessDays ?? 0,'Durée',0,3650);
   if(accessDays===0&&reward!=='0') throw new TypeError('Une récompense exige une durée d’accès.');
   const fileKey=textField(input.fileKey,'Clé du fichier',500,false),published=input.published===true;
@@ -225,4 +231,4 @@ async function sendNotification(adminId,input) {
   });
 }
 
-module.exports={getOverview,listUsers,listAdminCatalog,createProduct,updateProduct,createCategory,createCourse,setCourseStatus,createModule,createLesson,setLessonPublished,createDailyQuestion,setQuestionActive,setUserStatus,sendNotification,amountField,intField,slugify};
+module.exports={validateProductReward,getOverview,listUsers,listAdminCatalog,createProduct,updateProduct,createCategory,createCourse,setCourseStatus,createModule,createLesson,setLessonPublished,createDailyQuestion,setQuestionActive,setUserStatus,sendNotification,amountField,intField,slugify};
