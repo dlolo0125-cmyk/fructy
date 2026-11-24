@@ -26,7 +26,7 @@ async function listMyProductAccesses(userId) {
 async function purchaseProduct(userId, productId) {
   return transaction(async tx => {
     const productResult = await tx.query(
-      `SELECT id,name,price,currency,access_days,daily_reward
+      `SELECT id,name,price,currency,access_days,daily_reward,file_key
        FROM products WHERE id=$1 AND published=true FOR SHARE`,
       [productId]
     );
@@ -36,6 +36,11 @@ async function purchaseProduct(userId, productId) {
       throw error;
     }
     const product = productResult.rows[0];
+    if (!product.file_key) {
+      const error = new Error('Ce produit ne possède pas encore de fichier disponible.');
+      error.status = 409;
+      throw error;
+    }
     const walletResult = await tx.query(
       `SELECT id,balance FROM wallets
        WHERE user_id=$1 AND wallet_type='deposit' AND currency=$2 FOR UPDATE`,
