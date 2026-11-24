@@ -10,7 +10,10 @@
  <section class="panel"><h2>Nouveau produit numérique</h2><form id="productForm" class="stack">
   <label>Nom<input name="name" required maxlength="240"></label><label>Description<textarea name="description" rows="2"></textarea></label>
   <div class="formgrid"><label>Prix (FCFA)<input name="price" type="number" min="0" step="1" value="0" required></label><label>Durée d'accès (jours)<input name="accessDays" type="number" min="0" max="3650" value="0"></label></div>
-  <label>Récompense quotidienne (FCFA)<input name="dailyReward" type="number" min="0" step="1" value="0"></label><label>Clé de fichier privé<input name="fileKey" placeholder="À connecter au stockage privé"></label>
+  <label>Récompense quotidienne (FCFA)<input name="dailyReward" type="number" min="0" step="1" value="0"></label>
+  <label>Fichier PDF du produit (25 Mo maximum)<input name="pdfFile" id="productPdf" type="file" accept="application/pdf,.pdf"></label>
+  <label>Clé de fichier privé (remplie automatiquement)<input name="fileKey" id="productFileKey" placeholder="Le fichier envoyé sera associé ici"></label>
+  <p class="muted small">Le PDF est envoyé dans le stockage privé. Il ne devient accessible qu’aux membres ayant acheté le produit.</p>
   <label><span><input name="published" type="checkbox" style="width:auto"> Publier immédiatement</span></label><button>Créer le produit</button>
  </form></section>
  <section class="panel"><h2>Nouvelle catégorie de formation</h2><form id="categoryForm" class="stack">
@@ -66,7 +69,24 @@ async function loadCatalog(){
  section('Questions quotidiennes',d.questions,x=>{const row=document.createElement('div');row.className='row';const label=document.createElement('span');label.textContent=new Date(x.question_date).toLocaleDateString('fr-FR')+' · '+x.prompt+' · '+(x.active?'Active':'Inactive');const b=document.createElement('button');b.className='secondary';b.textContent=x.active?'Désactiver':'Activer';b.onclick=async()=>{try{await api('/api/admin/catalog/questions/'+x.id+'/active',{method:'PATCH',body:JSON.stringify({active:!x.active})});await loadCatalog()}catch(e){message('msg',e.message,true)}};row.append(label,b);return row});
 }
 async function submitForm(id,url,method='POST',transform=x=>x){const form=$(id);form.onsubmit=async e=>{e.preventDefault();try{await api(url,{method,body:JSON.stringify(transform(formObject(form)))});form.reset();await loadCatalog();message('msg','Enregistrement effectué.')}catch(err){message('msg',err.message,true)}}}
-submitForm('productForm','/api/admin/catalog/products','POST',x=>({...x,price:String(x.price),accessDays:Number(x.accessDays),dailyReward:String(x.dailyReward),published:new FormData($('productForm')).has('published')}));
+$('productForm').onsubmit=async e=>{
+ e.preventDefault();const form=$('productForm'),file=$('productPdf').files[0],x=formObject(form);
+ try{
+  if(file){
+   if(file.size>25*1024*1024||file.type!=='application/pdf')throw new Error('Choisis un PDF valide de 25 Mo maximum.');
+   const signature=new Uint8Array(await file.slice(0,5).arrayBuffer());
+   if(String.fromCharCode(...signature)!=='%PDF-')throw new Error('Le fichier sélectionné ne semble pas être un vrai PDF.');
+   message('msg','Préparation de l’envoi sécurisé du PDF…');
+   const signed=await api('/api/admin/storage/upload-url',{method:'POST',body:JSON.stringify({filename:file.name,size:file.size,contentType:'application/pdf'})});
+   const uploaded=await fetch(signed.upload.url,{method:'PUT',headers:{'content-type':'application/pdf'},body:file});
+   if(!uploaded.ok)throw new Error('Échec de l’envoi vers le stockage privé. Vérifie la configuration CORS du bucket R2.');
+   x.fileKey=signed.upload.key;$('productFileKey').value=x.fileKey;
+  }
+  x.price=String(x.price);x.accessDays=Number(x.accessDays);x.dailyReward=String(x.dailyReward);x.published=new FormData(form).has('published');
+  await api('/api/admin/catalog/products',{method:'POST',body:JSON.stringify(x)});
+  form.reset();$('productFileKey').value='';await loadCatalog();message('msg','Produit créé et PDF envoyé dans le stockage privé.');
+ }catch(err){message('msg',err.message,true)}
+};
 submitForm('categoryForm','/api/admin/catalog/categories','POST',x=>({...x,sortOrder:Number(x.sortOrder)}));
 submitForm('courseForm','/api/admin/catalog/courses','POST',x=>({...x,categoryId:x.categoryId||null,price:String(x.price),published:new FormData($('courseForm')).has('published')}));
 submitForm('moduleForm','', 'POST', x=>x);
