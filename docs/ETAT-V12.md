@@ -22,7 +22,7 @@ Dernière mise à jour : 24 novembre 2026.
 - Validation des clés d'idempotence, méthodes/destinations de retrait et paramètres de pagination.
 - Administration des retraits : liste filtrable réservée aux admins, approbation sans faux statut de paiement, refus avec restitution atomique du solde et écriture ledger distincte, journal d'audit et protection contre les doubles décisions.
 - Interface membre V12 responsive : connexion/inscription, portefeuilles, historique, création d'intention de dépôt et demande de retrait.
-- Console admin V12 responsive : indicateurs de synthèse, répertoire des membres en lecture seule, liste des retraits et décisions auditées.
+- Console admin V12 responsive : indicateurs de synthèse, répertoire des membres avec contrôle de statut, liste des retraits et décisions auditées.
 - Routes d'administration protégées par session et rôle `admin` (`/api/admin/overview`, `/api/admin/users`, `/api/admin/withdrawals`).
 - Script de création du premier administrateur, à exécuter explicitement après migration sur une base de test.
 - Catalogue des produits publiés, achat atomique depuis le portefeuille dépôt et création d'un accès produit.
@@ -33,7 +33,6 @@ Dernière mise à jour : 24 novembre 2026.
 - Migration `004_one_daily_question_per_day.sql` : index unique partiel pour garantir une seule question active par date.
 - Interface membre enrichie : produits, accès et réclamations de récompenses, formations, quiz quotidien et boîte de notifications.
 - Console admin de catalogue : création et publication des produits, catégories, formations, modules et leçons ; création et activation des questions quotidiennes.
-- Gestion des comptes clients : activation, mise en attente, suspension ou fermeture, avec protection des comptes administrateurs et audit.
 - Notifications ciblées ou diffusion aux membres actifs, avec journalisation admin ; boîte de réception membre et marquage comme lu.
 - Contrôle de statut des comptes clients avec audit ; les comptes administrateurs sont protégés contre les modifications via cette console.
 - Tests unitaires de validation des champs catalogue : montants entiers, plages d'entiers et slugs.
