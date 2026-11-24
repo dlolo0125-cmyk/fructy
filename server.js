@@ -2,6 +2,7 @@
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),{randomUUID}=require('node:crypto');
 const {query,closePool}=require('./backend/database/pool');
 const auth=require('./backend/auth/service');
+const wallet=require('./backend/wallet/service');
 const PORT=Number(process.env.PORT)||3000,PUBLIC_DIR=path.join(__dirname,'public');
 const COOKIE='fructy_session',MAX_BODY=32*1024;
 const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon'};
@@ -35,6 +36,25 @@ const server=http.createServer(async(req,res)=>{
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
    return sendJson(res,200,{ok:true,user});
+  }
+  if(pathname==='/api/wallets'&&req.method==='GET'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   return sendJson(res,200,{ok:true,wallets:await wallet.getWallets(user.id)});
+  }
+  if(pathname==='/api/wallets/transactions'&&req.method==='GET'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   const url=new URL(req.url,'http://localhost');
+   const limit=url.searchParams.has('limit')?Number(url.searchParams.get('limit')):25;
+   return sendJson(res,200,{ok:true,transactions:await wallet.getTransactions(user.id,{limit,before:url.searchParams.get('before')})});
+  }
+  if(pathname==='/api/withdrawals'&&req.method==='POST'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   const body=await readJson(req);
+   const result=await wallet.requestWithdrawal(user.id,{...body,idempotencyKey:req.headers['idempotency-key']});
+   return sendJson(res,result.replayed?200:201,{ok:true,withdrawal:result});
   }
   if(pathname.startsWith('/api/'))return sendJson(res,404,{error:{code:'NOT_FOUND',message:'Route API introuvable.'},requestId});
   if(req.method!=='GET'&&req.method!=='HEAD')return sendJson(res,405,{error:{message:'Méthode non autorisée.'},requestId});
