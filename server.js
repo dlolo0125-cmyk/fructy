@@ -49,6 +49,13 @@ const server=http.createServer(async(req,res)=>{
    const limit=url.searchParams.has('limit')?Number(url.searchParams.get('limit')):25;
    return sendJson(res,200,{ok:true,transactions:await wallet.getTransactions(user.id,{limit,before:url.searchParams.get('before')})});
   }
+  if(pathname==='/api/deposits'&&req.method==='POST'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   const body=await readJson(req);
+   const result=await wallet.createDepositIntent(user.id,{...body,idempotencyKey:req.headers['idempotency-key']});
+   return sendJson(res,result.replayed?200:201,{ok:true,deposit:result});
+  }
   if(pathname==='/api/withdrawals'&&req.method==='POST'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
