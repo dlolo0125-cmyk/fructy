@@ -89,7 +89,7 @@ const server=http.createServer(async(req,res)=>{
    const result=await catalog.purchaseProduct(user.id,productPurchase[1]);
    return sendJson(res,result.alreadyOwned?200:201,{ok:true,...result});
   }
-  const productDownload=pathname.match(/^\\/api\\/products\\/([0-9a-f-]{36})\\/download$/i);
+  const productDownload=pathname.match(/^\/api\/products\/([0-9a-f-]{36})\/download$/i);
   if(productDownload&&req.method==='GET'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
