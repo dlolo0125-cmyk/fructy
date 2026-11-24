@@ -133,7 +133,47 @@ async function requestWithdrawal(userId, input) {
   });
 }
 
+async function createDepositIntent(userId, input) {
+  const amount = parseAmount(input.amount, { min: 100, max: 1000000000 });
+  const provider = String(input.provider ?? '');
+  if (!['saspay', 'chariow'].includes(provider)) {
+    throw new TypeError('Prestataire de dépôt non pris en charge.');
+  }
+  const key = validateIdempotencyKey(input.idempotencyKey);
+  const payerPhone = input.payerPhone == null || input.payerPhone === ''
+    ? null
+    : require('../auth/service').normalizePhone(input.payerPhone);
+  const idempotencyKey = `deposit:${userId}:${key}`;
+
+  const result = await query(
+    `INSERT INTO payment_intents(user_id,provider,idempotency_key,amount,currency,payer_phone)
+     VALUES($1,$2,$3,$4,'XOF',$5)
+     ON CONFLICT(idempotency_key) DO NOTHING
+     RETURNING id,provider,amount,currency,status,payer_phone,created_at`,
+    [userId, provider, idempotencyKey, amount, payerPhone]
+  );
+  if (result.rowCount) return { ...result.rows[0], amount: String(result.rows[0].amount), replayed: false };
+
+  const existing = await query(
+    `SELECT id,user_id,provider,amount,currency,status,payer_phone,created_at
+     FROM payment_intents WHERE idempotency_key=$1`,
+    [idempotencyKey]
+  );
+  if (!existing.rowCount) {
+    const error = new Error('Impossible de confirmer la création du dépôt. Réessaie avec la même clé.');
+    error.status = 409;
+    throw error;
+  }
+  const row = existing.rows[0];
+  if (row.user_id !== userId || row.provider !== provider || String(row.amount) !== String(amount) || row.payer_phone !== payerPhone) {
+    const error = new Error("Cette clé d'idempotence a déjà été utilisée avec d'autres paramètres.");
+    error.status = 409;
+    throw error;
+  }
+  return { ...row, amount: String(row.amount), replayed: true };
+}
+
 module.exports = {
-  getWallets, getTransactions, requestWithdrawal,
+  getWallets, getTransactions, requestWithdrawal, createDepositIntent,
   validateIdempotencyKey, validateDestination, pageOptions
 };
