@@ -14,13 +14,16 @@ Dernière mise à jour : 24 novembre 2026.
 - Tests unitaires de validation des montants entiers.
 - Services de portefeuille : consultation des soldes et historique paginé.
 - Demandes de retrait sur le portefeuille de gains avec réservation atomique des fonds, ledger immuable et clé d'idempotence.
-- Création d'intentions de dépôt `pending` via SasPay ou Chariow, avec idempotence et numéro payeur facultatif. Aucun appel fournisseur ni crédit automatique n'est effectué.
-- Routes authentifiées `GET /api/wallets`, `GET /api/wallets/transactions` et `POST /api/withdrawals` et `POST /api/deposits`.
+- Création d'intentions de dépôt `pending` via SasPay ou Chariow, avec idempotence et numéro payeur facultatif.
+- Réception des webhooks via corps HTTP brut, signature HMAC-SHA256, identifiant d'événement anti-rejeu et vérification du prestataire, de l'intention, du montant et de la devise.
+- Crédit du portefeuille de dépôt et écriture du ledger dans une même transaction, avec clé unique de crédit pour empêcher le double paiement.
+- Tests unitaires de validation HMAC (signature valide, corps altéré, format invalide et secret manquant).
+- Routes authentifiées `GET /api/wallets`, `GET /api/wallets/transactions` et `POST /api/withdrawals` et `POST /api/deposits`, plus les callbacks `POST /api/webhooks/saspay` et `POST /api/webhooks/chariow`.
 - Validation des clés d'idempotence, méthodes/destinations de retrait et paramètres de pagination.
 
 ## Important : environnement de développement uniquement
 
-Les routes métier disponibles sont encore une base de développement. Elles ne sont pas prêtes pour la production : les tests PostgreSQL, la validation métier des retraits, les dépôts et les webhooks signés restent à réaliser. Les pages HTML historiques sont conservées temporairement comme référence visuelle et contractuelle, elles ne constituent pas une interface V12 opérationnelle.
+Les routes métier disponibles sont encore une base de développement. Elles ne sont pas prêtes pour la production : les tests PostgreSQL et la recette avec les vrais prestataires restent à réaliser. Le format de callback HMAC-SHA256 `X-Fructy-Signature` est un adaptateur de sécurité interne provisoire ; il ne faut pas supposer que SasPay ou Chariow émettent exactement ce format sans vérifier leur documentation officielle et leurs exemples de signature. Les pages HTML historiques sont conservées temporairement comme référence visuelle et contractuelle, elles ne constituent pas une interface V12 opérationnelle.
 
 **Ne pas connecter cette branche à Render en production et ne pas exécuter les migrations sur la base Neon de production.**
 
@@ -36,9 +39,9 @@ Les routes métier disponibles sont encore une base de développement. Elles ne 
 
 ## À faire avant toute recette
 
-1. Réimplémenter l'inscription, la connexion, les sessions et les rôles.
+1. Finaliser et tester l'inscription, la connexion, les sessions et les rôles.
 2. Tester les services de portefeuille et ledger transactionnels sur PostgreSQL.
-3. Connecter les intentions de dépôt aux API SasPay/Chariow et créditer uniquement après vérification cryptographique des webhooks signés, rapprochement montant/devise/référence et tests anti-rejeu.
+3. Adapter la vérification cryptographique au format officiel de signature de chaque prestataire, puis tester en sandbox avec de vrais événements avant activation.
 4. Ajouter les accès PDF privés, les règles de récompenses et l'administration.
 5. Réimplémenter les formations, quiz, progression et certificats.
 6. Construire les interfaces client et administration V12.
