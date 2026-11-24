@@ -85,6 +85,30 @@ async function purchaseProduct(userId, productId) {
   });
 }
 
+async function createProductDownloadUrl(userId, productId) {
+  const result = await query(
+    `SELECT p.id,p.name,p.file_key
+     FROM product_accesses a JOIN products p ON p.id=a.product_id
+     WHERE a.user_id=$1 AND p.id=$2 AND p.published=true
+       AND (a.expires_at IS NULL OR a.expires_at>now())
+     ORDER BY a.purchased_at DESC LIMIT 1`,
+    [userId, productId]
+  );
+  if (!result.rowCount) {
+    const error = new Error('Achat requis ou accès expiré.');
+    error.status = 403;
+    throw error;
+  }
+  const product = result.rows[0];
+  if (!product.file_key) {
+    const error = new Error('Fichier du produit indisponible.');
+    error.status = 404;
+    throw error;
+  }
+  const { createDownloadUrl } = require('../storage/r2');
+  return { url: await createDownloadUrl(product.file_key, product.name), expiresIn: 60 };
+}
+
 async function listCourses() {
   const result = await query(
     `SELECT c.id,c.title,c.slug,c.description,c.price,c.currency,c.created_at,
@@ -218,4 +242,4 @@ async function updateLessonProgress(userId, lessonId, progressPercent) {
   return result.rows[0];
 }
 
-module.exports = { listProducts, listMyProductAccesses, purchaseProduct, listCourses, getCourse, enrollCourse, updateLessonProgress };
+module.exports = { listProducts, listMyProductAccesses, purchaseProduct, createProductDownloadUrl, listCourses, getCourse, enrollCourse, updateLessonProgress };
