@@ -130,6 +130,11 @@ async function enrollCourse(userId, courseId) {
       [userId, courseId]
     );
     if (existing.rowCount && existing.rows[0].status === 'active') return { enrollment: existing.rows[0], alreadyEnrolled: true };
+    if (existing.rowCount) {
+      const error = new Error('Cette inscription a été révoquée. Contacte le support pour rétablir ton accès.');
+      error.status = 409;
+      throw error;
+    }
     let walletId = null;
     if (BigInt(course.price) > 0n) {
       const wallet = await tx.query(
