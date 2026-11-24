@@ -70,6 +70,12 @@ const server=http.createServer(async(req,res)=>{
 
 
 
+
+  if(pathname==='/api/my/product-accesses'&&req.method==='GET'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   return sendJson(res,200,{ok:true,accesses:await catalog.listMyProductAccesses(user.id)});
+  }
   if(pathname==='/api/products'&&req.method==='GET'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
