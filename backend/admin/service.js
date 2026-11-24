@@ -169,7 +169,9 @@ async function createDailyQuestion(adminId,input) {
   const reward=amountField(input.rewardAmount??0,'Récompense');
   const explanation=textField(input.explanation,'Explication',2000,false);
   return transaction(async tx=>{
-    const prior=await tx.query('SELECT id FROM daily_questions WHERE question_date=$1 LIMIT 1',[date]);\n    if(prior.rowCount){const e=new Error('Une question existe déjà pour cette date.');e.status=409;throw e;}\n    const r=await tx.query(`INSERT INTO daily_questions(question_date,prompt,options,correct_option,reward_amount,explanation,active)
+    const prior=await tx.query('SELECT id FROM daily_questions WHERE question_date=$1 LIMIT 1',[date]);
+    if(prior.rowCount){const e=new Error('Une question existe déjà pour cette date.');e.status=409;throw e;}
+    const r=await tx.query(`INSERT INTO daily_questions(question_date,prompt,options,correct_option,reward_amount,explanation,active)
       VALUES($1,$2,$3::jsonb,$4,$5,$6,$7) RETURNING id,question_date,prompt,options,reward_amount::text,active`,
       [date,prompt,JSON.stringify(options),correct,reward,explanation,input.active!==false]);
     await audit(tx,adminId,'daily_question.create','daily_question',r.rows[0].id,{date,prompt,reward});
@@ -208,12 +210,14 @@ async function sendNotification(adminId,input) {
       if(!exists.rowCount){const e=new Error('Membre introuvable ou fermé.');e.status=404;throw e;}
       result=await tx.query('INSERT INTO notifications(user_id,title,body) VALUES($1,$2,$3) RETURNING id,user_id,title,body,created_at',[userId,title,body]);
     }else{
-      result=await tx.query(`INSERT INTO notifications(user_id,title,body)
-        SELECT id,$1,$2 FROM users WHERE status='active'
-        RETURNING id,user_id,title,body,created_at`,[title,body]);
+      result=await tx.query(`WITH inserted AS (
+        INSERT INTO notifications(user_id,title,body)
+        SELECT id,$1,$2 FROM users WHERE status='active' RETURNING 1
+      ) SELECT count(*)::int AS count FROM inserted`,[title,body]);
     }
-    await audit(tx,adminId,'notification.send',userId?'user':'broadcast',userId||'active-users',{title,count:result.rowCount});
-    return {count:result.rowCount};
+    const count=userId?result.rowCount:result.rows[0].count;
+    await audit(tx,adminId,'notification.send',userId?'user':'broadcast',userId||'active-users',{title,count});
+    return {count};
   });
 }
 
