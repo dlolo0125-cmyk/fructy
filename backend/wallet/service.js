@@ -33,7 +33,7 @@ function pageOptions({ limit = 25, before = null } = {}) {
   if (before !== null && before !== undefined && before !== '') {
     cursor = String(before);
     if (!/^\d{4}-\d{2}-\d{2}T/.test(cursor) || Number.isNaN(Date.parse(cursor))) {
-      throw new TypeError('Curseur de pagination invalide.');
+      throw new TypeError('curseur de pagination invalide.');
     }
   }
   return { limit: parsed, before: cursor };
