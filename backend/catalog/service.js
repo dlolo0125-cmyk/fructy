@@ -10,6 +10,19 @@ async function listProducts() {
   return result.rows.map(row => ({ ...row, price: String(row.price), daily_reward: String(row.daily_reward) }));
 }
 
+
+async function listMyProductAccesses(userId) {
+  const result = await query(
+    `SELECT a.id,a.product_id,p.name,p.daily_reward,p.access_days,a.purchased_at,a.expires_at,
+            (SELECT count(*)::int FROM product_reward_credits r WHERE r.product_access_id=a.id) AS rewards_claimed
+     FROM product_accesses a JOIN products p ON p.id=a.product_id
+     WHERE a.user_id=$1 AND (a.expires_at IS NULL OR a.expires_at>now())
+     ORDER BY a.purchased_at DESC`,
+    [userId]
+  );
+  return result.rows.map(row => ({ ...row, daily_reward: String(row.daily_reward) }));
+}
+
 async function purchaseProduct(userId, productId) {
   return transaction(async tx => {
     const productResult = await tx.query(
@@ -200,4 +213,4 @@ async function updateLessonProgress(userId, lessonId, progressPercent) {
   return result.rows[0];
 }
 
-module.exports = { listProducts, purchaseProduct, listCourses, getCourse, enrollCourse, updateLessonProgress };
+module.exports = { listProducts, listMyProductAccesses, purchaseProduct, listCourses, getCourse, enrollCourse, updateLessonProgress };
