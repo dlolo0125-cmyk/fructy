@@ -11,14 +11,21 @@ Ajouter comme secrets (ne jamais les mettre dans Git) :
 - `R2_SECRET_ACCESS_KEY` : Secret Access Key du jeton R2
 - `R2_BUCKET` : nom du bucket privé
 
-Créer un jeton R2 limité au bucket Fructy. La permission Object Read suffit aux téléchargements ; Object Read & Write sera nécessaire pour le futur flux d'upload administrateur.
+Créer un jeton R2 limité au bucket Fructy. La permission Object Read & Write sur ce bucket est nécessaire pour les téléchargements et les envois administrateur.
 
-## Associer un PDF à un produit
+## Configuration CORS du bucket
 
-1. Déposer le PDF dans le bucket privé R2.
-2. Copier sa clé d'objet exacte (ex. `products/guide-debutant.pdf`).
-3. Renseigner cette clé dans le champ `fileKey` du produit depuis l'administration.
-4. Publier le produit.
+Dans Cloudflare R2, configure CORS sur le bucket privé pour autoriser l’origine exacte de ton application (par exemple `https://fructy.onrender.com`), la méthode `PUT`, l’en-tête `Content-Type` et l’en-tête de réponse `ETag`. N’autorise pas `*` en production. Si tu utilises un autre domaine, ajoute-le explicitement.
+
+## Envoyer un PDF depuis l’administration
+
+1. Ouvre `/admin` avec un compte administrateur.
+2. Dans « Nouveau produit numérique », sélectionne un PDF de 25 Mo maximum.
+3. L’interface vérifie l’extension, le type MIME et la signature `%PDF-`, puis demande au serveur un lien PUT signé de cinq minutes.
+4. Le navigateur envoie directement le fichier au bucket privé. La clé générée est associée automatiquement au produit.
+5. Crée le produit. Ne le publie qu'après avoir confirmé que l'envoi a réussi.
+
+Le champ `fileKey` peut aussi être renseigné manuellement pour les objets déjà présents dans le bucket.
 
 Ne pas rendre le bucket public et ne pas utiliser une URL publique comme `fileKey`.
 
