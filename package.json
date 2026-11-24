@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "migrate": "node --env-file-if-exists=.env backend/database/migrate.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "admin:bootstrap": "node --env-file-if-exists=.env backend/bootstrap-admin.js"
   },
   "engines": {
     "node": ">=22.13.0 <23"
