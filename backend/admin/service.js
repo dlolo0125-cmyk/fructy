@@ -202,7 +202,7 @@ async function sendNotification(adminId,input) {
   return transaction(async tx=>{
     let result;
     if(userId){
-      const exists=await tx.query('SELECT id FROM users WHERE id=$1 AND status<>'closed'',[userId]);
+      const exists=await tx.query(`SELECT id FROM users WHERE id=$1 AND status<>'closed'`,[userId]);
       if(!exists.rowCount){const e=new Error('Membre introuvable ou fermé.');e.status=404;throw e;}
       result=await tx.query('INSERT INTO notifications(user_id,title,body) VALUES($1,$2,$3) RETURNING id,user_id,title,body,created_at',[userId,title,body]);
     }else{
