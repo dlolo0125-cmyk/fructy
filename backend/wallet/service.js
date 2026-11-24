@@ -1,6 +1,5 @@
 'use strict';
 
-const crypto = require('node:crypto');
 const { query, transaction } = require('../database/pool');
 const { parseAmount } = require('../security/money');
 
@@ -97,6 +96,20 @@ async function requestWithdrawal(userId, input) {
       throw error;
     }
     const wallet = walletResult.rows[0];
+    const concurrent = await tx.query(
+      `SELECT id, amount, status, method, destination, created_at
+       FROM withdrawals WHERE idempotency_key=$1`,
+      [withdrawalKey]
+    );
+    if (concurrent.rowCount) {
+      const row = concurrent.rows[0];
+      if (String(row.amount) !== String(amount) || row.method !== method || row.destination !== destination) {
+        const error = new Error("Cette clé d'idempotence a déjà été utilisée avec d'autres paramètres.");
+        error.status = 409;
+        throw error;
+      }
+      return { ...row, amount: String(row.amount), replayed: true };
+    }
     const balance = BigInt(wallet.balance);
     if (balance < BigInt(amount)) {
       const error = new Error('Solde disponible insuffisant.');
