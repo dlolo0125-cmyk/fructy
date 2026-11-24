@@ -94,7 +94,7 @@ const server=http.createServer(async(req,res)=>{
   }
   if(pathname.startsWith('/api/'))return sendJson(res,404,{error:{code:'NOT_FOUND',message:'Route API introuvable.'},requestId});
   if(req.method!=='GET'&&req.method!=='HEAD')return sendJson(res,405,{error:{message:'Méthode non autorisée.'},requestId});
-  const requested=pathname==='/'?'client.html':pathname.replace(/^\/+/,''),resolved=path.resolve(PUBLIC_DIR,requested);
+  const requested=pathname==='/'?'v12-client.html':pathname==='/admin'?'v12-admin.html':pathname.replace(/^\/+/,''),resolved=path.resolve(PUBLIC_DIR,requested);
   if(!resolved.startsWith(PUBLIC_DIR+path.sep)&&resolved!==PUBLIC_DIR)return sendJson(res,403,{error:{message:'Accès refusé.'},requestId});
   let stat;try{stat=await fs.promises.stat(resolved)}catch{return sendJson(res,404,{error:{message:'Page introuvable.'},requestId})}
   if(!stat.isFile())return sendJson(res,404,{error:{message:'Fichier introuvable.'},requestId});
