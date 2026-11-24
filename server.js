@@ -3,6 +3,7 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
 const {query,closePool}=require('./backend/database/pool');
 const auth=require('./backend/auth/service');
 const wallet=require('./backend/wallet/service');
+const admin=require('./backend/admin/service');
 const PORT=Number(process.env.PORT)||3000,PUBLIC_DIR=path.join(__dirname,'public');
 const COOKIE='fructy_session',MAX_BODY=32*1024;
 const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon'};
@@ -65,6 +66,16 @@ const server=http.createServer(async(req,res)=>{
    return sendJson(res,result.replayed?200:201,{ok:true,withdrawal:result});
   }
 
+
+  if((pathname==='/api/admin/overview'||pathname==='/api/admin/users')&&req.method==='GET'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   if(user.role!=='admin')return sendJson(res,403,{error:{code:'FORBIDDEN',message:'Accès administrateur requis.'},requestId});
+   if(pathname==='/api/admin/overview')return sendJson(res,200,{ok:true,overview:await admin.getOverview()});
+   const url=new URL(req.url,'http://localhost');
+   const limit=url.searchParams.has('limit')?Number(url.searchParams.get('limit')):25;
+   return sendJson(res,200,{ok:true,users:await admin.listUsers({limit,before:url.searchParams.get('before'),search:url.searchParams.get('search')})});
+  }
   if(pathname==='/api/admin/withdrawals'&&req.method==='GET'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
