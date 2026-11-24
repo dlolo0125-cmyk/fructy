@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {amountField,intField,slugify}=require('../backend/admin/service');
+const {amountField,intField,slugify,validateProductReward}=require('../backend/admin/service');
 
 test('validates whole XOF amounts without floating point conversion',()=>{
  assert.equal(amountField('9007199254740991','Prix'),'9007199254740991');
@@ -15,4 +15,11 @@ test('validates bounded integer fields',()=>{
 test('normalizes slugs and rejects empty slugs',()=>{
  assert.equal(slugify('Économie & finance'), 'economie-finance');
  assert.throws(()=>slugify('!!!'));
+});
+
+test('plafonne la récompense quotidienne à 50 % du prix',()=>{
+ assert.equal(validateProductReward('4000','2000'),'2000');
+ assert.equal(validateProductReward('4001','2000'),'2000');
+ assert.throws(()=>validateProductReward('4000','2001'),/50 %/);
+ assert.throws(()=>validateProductReward('0','1'),/50 %/);
 });
