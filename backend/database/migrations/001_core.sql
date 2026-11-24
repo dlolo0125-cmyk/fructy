@@ -1,6 +1,4 @@
 -- Fructy V12: nouveau schéma PostgreSQL. Montants en unités entières de FCFA.
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 CREATE TABLE users (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), phone text NOT NULL UNIQUE,
  password_hash text NOT NULL, role text NOT NULL DEFAULT 'client' CHECK(role IN ('client','admin')),
