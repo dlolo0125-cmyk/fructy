@@ -82,14 +82,14 @@ const server=http.createServer(async(req,res)=>{
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
    return sendJson(res,200,{ok:true,products:await catalog.listProducts()});
   }
-  const productPurchase=pathname.match(/^\\/api\\/products\\/([0-9a-f-]{36})\\/purchase$/i);
+  const productPurchase=pathname.match(/^\/api\/products\/([0-9a-f-]{36})\/purchase$/i);
   if(productPurchase&&req.method==='POST'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
    const result=await catalog.purchaseProduct(user.id,productPurchase[1]);
    return sendJson(res,result.alreadyOwned?200:201,{ok:true,...result});
   }
-  const productReward=pathname.match(/^\\/api\\/product-accesses\\/([0-9a-f-]{36})\\/claim-reward$/i);
+  const productReward=pathname.match(/^\/api\/product-accesses\/([0-9a-f-]{36})\/claim-reward$/i);
   if(productReward&&req.method==='POST'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
@@ -100,20 +100,20 @@ const server=http.createServer(async(req,res)=>{
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
    return sendJson(res,200,{ok:true,courses:await catalog.listCourses()});
   }
-  const courseMatch=pathname.match(/^\\/api\\/courses\\/([0-9a-f-]{36})$/i);
+  const courseMatch=pathname.match(/^\/api\/courses\/([0-9a-f-]{36})$/i);
   if(courseMatch&&req.method==='GET'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
    return sendJson(res,200,{ok:true,course:await catalog.getCourse(user.id,courseMatch[1])});
   }
-  const courseEnroll=pathname.match(/^\\/api\\/courses\\/([0-9a-f-]{36})\\/enroll$/i);
+  const courseEnroll=pathname.match(/^\/api\/courses\/([0-9a-f-]{36})\/enroll$/i);
   if(courseEnroll&&req.method==='POST'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
    const result=await catalog.enrollCourse(user.id,courseEnroll[1]);
    return sendJson(res,result.alreadyEnrolled?200:201,{ok:true,...result});
   }
-  const lessonProgress=pathname.match(/^\\/api\\/lessons\\/([0-9a-f-]{36})\\/progress$/i);
+  const lessonProgress=pathname.match(/^\/api\/lessons\/([0-9a-f-]{36})\/progress$/i);
   if(lessonProgress&&req.method==='PUT'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
@@ -125,7 +125,7 @@ const server=http.createServer(async(req,res)=>{
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
    return sendJson(res,200,{ok:true,question:await engagement.getDailyQuestion()});
   }
-  const dailyAnswer=pathname.match(/^\\/api\\/questions\\/daily\\/([0-9a-f-]{36})\\/answer$/i);
+  const dailyAnswer=pathname.match(/^\/api\/questions\/daily\/([0-9a-f-]{36})\/answer$/i);
   if(dailyAnswer&&req.method==='POST'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
@@ -140,7 +140,7 @@ const server=http.createServer(async(req,res)=>{
    const url=new URL(req.url,'http://localhost');
    return sendJson(res,200,{ok:true,notifications:await notifications.listNotifications(user.id,url.searchParams.has('limit')?Number(url.searchParams.get('limit')):30)});
   }
-  const notificationRead=pathname.match(/^\\/api\\/notifications\\/([0-9a-f-]{36})\\/read$/i);
+  const notificationRead=pathname.match(/^\/api\/notifications\/([0-9a-f-]{36})\/read$/i);
   if(notificationRead&&req.method==='PATCH'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
@@ -153,7 +153,7 @@ const server=http.createServer(async(req,res)=>{
    const body=await readJson(req);
    return sendJson(res,201,{ok:true,result:await admin.sendNotification(user.id,body)});
   }
-  const userStatus=pathname.match(/^\\/api\\/admin\\/users\\/([0-9a-f-]{36})\\/status$/i);
+  const userStatus=pathname.match(/^\/api\/admin\/users\/([0-9a-f-]{36})\/status$/i);
   if(userStatus&&req.method==='PATCH'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
@@ -170,28 +170,28 @@ const server=http.createServer(async(req,res)=>{
    const body=['POST','PUT','PATCH'].includes(req.method)?await readJson(req):{};
    if(pathname==='/api/admin/catalog/products'&&req.method==='POST')
     return sendJson(res,201,{ok:true,product:await admin.createProduct(user.id,body)});
-   let match=pathname.match(/^\\/api\\/admin\\/catalog\\/products\\/([0-9a-f-]{36})$/i);
+   let match=pathname.match(/^\/api\/admin\/catalog\/products\/([0-9a-f-]{36})$/i);
    if(match&&req.method==='PUT')
     return sendJson(res,200,{ok:true,product:await admin.updateProduct(user.id,match[1],body)});
    if(pathname==='/api/admin/catalog/categories'&&req.method==='POST')
     return sendJson(res,201,{ok:true,category:await admin.createCategory(user.id,body)});
    if(pathname==='/api/admin/catalog/courses'&&req.method==='POST')
     return sendJson(res,201,{ok:true,course:await admin.createCourse(user.id,body)});
-   match=pathname.match(/^\\/api\\/admin\\/catalog\\/courses\\/([0-9a-f-]{36})\\/status$/i);
+   match=pathname.match(/^\/api\/admin\/catalog\/courses\/([0-9a-f-]{36})\/status$/i);
    if(match&&req.method==='PATCH')
     return sendJson(res,200,{ok:true,course:await admin.setCourseStatus(user.id,match[1],body.status)});
-   match=pathname.match(/^\\/api\\/admin\\/catalog\\/courses\\/([0-9a-f-]{36})\\/modules$/i);
+   match=pathname.match(/^\/api\/admin\/catalog\/courses\/([0-9a-f-]{36})\/modules$/i);
    if(match&&req.method==='POST')
     return sendJson(res,201,{ok:true,module:await admin.createModule(user.id,match[1],body)});
-   match=pathname.match(/^\\/api\\/admin\\/catalog\\/modules\\/([0-9a-f-]{36})\\/lessons$/i);
+   match=pathname.match(/^\/api\/admin\/catalog\/modules\/([0-9a-f-]{36})\/lessons$/i);
    if(match&&req.method==='POST')
     return sendJson(res,201,{ok:true,lesson:await admin.createLesson(user.id,match[1],body)});
-   match=pathname.match(/^\\/api\\/admin\\/catalog\\/lessons\\/([0-9a-f-]{36})\\/publish$/i);
+   match=pathname.match(/^\/api\/admin\/catalog\/lessons\/([0-9a-f-]{36})\/publish$/i);
    if(match&&req.method==='PATCH')
     return sendJson(res,200,{ok:true,lesson:await admin.setLessonPublished(user.id,match[1],body.published)});
    if(pathname==='/api/admin/catalog/questions'&&req.method==='POST')
     return sendJson(res,201,{ok:true,question:await admin.createDailyQuestion(user.id,body)});
-   match=pathname.match(/^\\/api\\/admin\\/catalog\\/questions\\/([0-9a-f-]{36})\\/active$/i);
+   match=pathname.match(/^\/api\/admin\/catalog\/questions\/([0-9a-f-]{36})\/active$/i);
    if(match&&req.method==='PATCH')
     return sendJson(res,200,{ok:true,question:await admin.setQuestionActive(user.id,match[1],body.active)});
    return sendJson(res,404,{error:{code:'NOT_FOUND',message:'Action catalogue introuvable.'},requestId});
@@ -213,7 +213,7 @@ const server=http.createServer(async(req,res)=>{
    const limit=url.searchParams.has('limit')?Number(url.searchParams.get('limit')):25;
    return sendJson(res,200,{ok:true,withdrawals:await wallet.listWithdrawals({status:url.searchParams.get('status'),limit,before:url.searchParams.get('before')})});
   }
-  const reviewMatch=pathname.match(/^\\/api\\/admin\\/withdrawals\\/([0-9a-f-]{36})\\/review$/i);
+  const reviewMatch=pathname.match(/^\/api\/admin\/withdrawals\/([0-9a-f-]{36})\/review$/i);
   if(reviewMatch&&req.method==='POST'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
