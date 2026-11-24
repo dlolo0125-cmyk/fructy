@@ -4,6 +4,8 @@ const {query,closePool}=require('./backend/database/pool');
 const auth=require('./backend/auth/service');
 const wallet=require('./backend/wallet/service');
 const admin=require('./backend/admin/service');
+const catalog=require('./backend/catalog/service');
+const engagement=require('./backend/engagement/service');
 const PORT=Number(process.env.PORT)||3000,PUBLIC_DIR=path.join(__dirname,'public');
 const COOKIE='fructy_session',MAX_BODY=32*1024;
 const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon'};
@@ -67,6 +69,62 @@ const server=http.createServer(async(req,res)=>{
   }
 
 
+
+  if(pathname==='/api/products'&&req.method==='GET'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   return sendJson(res,200,{ok:true,products:await catalog.listProducts()});
+  }
+  const productPurchase=pathname.match(/^\\/api\\/products\\/([0-9a-f-]{36})\\/purchase$/i);
+  if(productPurchase&&req.method==='POST'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   const result=await catalog.purchaseProduct(user.id,productPurchase[1]);
+   return sendJson(res,result.alreadyOwned?200:201,{ok:true,...result});
+  }
+  const productReward=pathname.match(/^\\/api\\/product-accesses\\/([0-9a-f-]{36})\\/claim-reward$/i);
+  if(productReward&&req.method==='POST'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   return sendJson(res,201,{ok:true,reward:await engagement.claimProductReward(user.id,productReward[1])});
+  }
+  if(pathname==='/api/courses'&&req.method==='GET'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   return sendJson(res,200,{ok:true,courses:await catalog.listCourses()});
+  }
+  const courseMatch=pathname.match(/^\\/api\\/courses\\/([0-9a-f-]{36})$/i);
+  if(courseMatch&&req.method==='GET'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   return sendJson(res,200,{ok:true,course:await catalog.getCourse(user.id,courseMatch[1])});
+  }
+  const courseEnroll=pathname.match(/^\\/api\\/courses\\/([0-9a-f-]{36})\\/enroll$/i);
+  if(courseEnroll&&req.method==='POST'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   const result=await catalog.enrollCourse(user.id,courseEnroll[1]);
+   return sendJson(res,result.alreadyEnrolled?200:201,{ok:true,...result});
+  }
+  const lessonProgress=pathname.match(/^\\/api\\/lessons\\/([0-9a-f-]{36})\\/progress$/i);
+  if(lessonProgress&&req.method==='PUT'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   const body=await readJson(req);
+   return sendJson(res,200,{ok:true,progress:await catalog.updateLessonProgress(user.id,lessonProgress[1],body.progressPercent)});
+  }
+  if(pathname==='/api/questions/daily'&&req.method==='GET'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   return sendJson(res,200,{ok:true,question:await engagement.getDailyQuestion()});
+  }
+  const dailyAnswer=pathname.match(/^\\/api\\/questions\\/daily\\/([0-9a-f-]{36})\\/answer$/i);
+  if(dailyAnswer&&req.method==='POST'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   const body=await readJson(req);
+   return sendJson(res,200,{ok:true,answer:await engagement.submitDailyAnswer(user.id,dailyAnswer[1],body.selectedOption)});
+  }
   if((pathname==='/api/admin/overview'||pathname==='/api/admin/users')&&req.method==='GET'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
