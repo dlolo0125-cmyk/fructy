@@ -78,6 +78,7 @@ async function createProduct(adminId, input) {
   if(accessDays===0 && reward!=='0') throw new TypeError('Une récompense exige une durée d’accès.');
   const fileKey=textField(input.fileKey,'Clé du fichier',500,false);
   const published=input.published===true;
+  if(published&&!fileKey) throw new TypeError('Un produit ne peut pas être publié sans fichier associé.');
   return transaction(async tx=>{
     const r=await tx.query(`INSERT INTO products(name,description,price,currency,file_key,access_days,daily_reward,published)
       VALUES($1,$2,$3,'XOF',$4,$5,$6,$7) RETURNING id,name,price::text,published`,
@@ -92,6 +93,7 @@ async function updateProduct(adminId,id,input) {
   const accessDays=intField(input.accessDays ?? 0,'Durée',0,3650);
   if(accessDays===0&&reward!=='0') throw new TypeError('Une récompense exige une durée d’accès.');
   const fileKey=textField(input.fileKey,'Clé du fichier',500,false),published=input.published===true;
+  if(published&&!fileKey) throw new TypeError('Un produit ne peut pas être publié sans fichier associé.');
   return transaction(async tx=>{
     const r=await tx.query(`UPDATE products SET name=$2,description=$3,price=$4,file_key=$5,access_days=$6,daily_reward=$7,published=$8
       WHERE id=$1 RETURNING id,name,price::text,published`,[id,name,description,price,fileKey||null,accessDays,reward,published]);
