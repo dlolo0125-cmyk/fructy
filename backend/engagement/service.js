@@ -18,7 +18,7 @@ async function submitDailyAnswer(userId, questionId, selectedOption) {
   }
   return transaction(async tx => {
     const questionResult = await tx.query(
-      `SELECT id,options,correct_option FROM daily_questions
+      `SELECT id,options,correct_option,reward_amount FROM daily_questions
        WHERE id=$1 AND active=true AND question_date=CURRENT_DATE FOR SHARE`,
       [questionId]
     );
@@ -34,11 +34,10 @@ async function submitDailyAnswer(userId, questionId, selectedOption) {
     const correct = selected === question.correct_option;
     const inserted = await tx.query(
       `INSERT INTO daily_question_answers(user_id,question_id,selected_option,is_correct,reward_amount)
-       VALUES($1,$2,$3,$4,CASE WHEN $4 THEN
-         (SELECT CASE WHEN $4 THEN 0 ELSE 0 END) ELSE 0 END)
+       VALUES($1,$2,$3,$4,CASE WHEN $4 THEN $5 ELSE 0 END)
        ON CONFLICT(user_id,question_id) DO NOTHING
        RETURNING id,is_correct,reward_amount,answered_at`,
-      [userId, questionId, selected, correct]
+      [userId, questionId, selected, correct, question.reward_amount]
     );
     if (!inserted.rowCount) {
       const prior = await tx.query(
@@ -48,7 +47,25 @@ async function submitDailyAnswer(userId, questionId, selectedOption) {
       );
       return { alreadyAnswered: true, ...prior.rows[0], reward_amount: String(prior.rows[0].reward_amount) };
     }
-    return { alreadyAnswered: false, ...inserted.rows[0], reward_amount: String(inserted.rows[0].reward_amount) };
+    const answer = inserted.rows[0];
+    if (correct && BigInt(answer.reward_amount) > 0n) {
+      const wallet = await tx.query(
+        `SELECT id FROM wallets WHERE user_id=$1 AND wallet_type='earnings' AND currency='XOF' FOR UPDATE`,
+        [userId]
+      );
+      if (!wallet.rowCount) {
+        const error = new Error('Portefeuille de gains introuvable.');
+        error.status = 500;
+        throw error;
+      }
+      await tx.query('UPDATE wallets SET balance=balance+$1,updated_at=now() WHERE id=$2',[answer.reward_amount,wallet.rows[0].id]);
+      await tx.query(
+        `INSERT INTO ledger_entries(wallet_id,user_id,entry_type,amount,currency,reference_type,reference_id,idempotency_key,description)
+         VALUES($1,$2,'quiz_reward',$3,'XOF','daily_question_answer',$4,$5,'Récompense de la question du jour')`,
+        [wallet.rows[0].id,userId,answer.reward_amount,answer.id,`daily-question-reward:${answer.id}`]
+      );
+    }
+    return { alreadyAnswered: false, ...answer, reward_amount: String(answer.reward_amount) };
   });
 }
 
