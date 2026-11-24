@@ -131,6 +131,42 @@ const server=http.createServer(async(req,res)=>{
    const body=await readJson(req);
    return sendJson(res,200,{ok:true,answer:await engagement.submitDailyAnswer(user.id,dailyAnswer[1],body.selectedOption)});
   }
+
+  if(pathname.startsWith('/api/admin/catalog')){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   if(user.role!=='admin')return sendJson(res,403,{error:{code:'FORBIDDEN',message:'Accès administrateur requis.'},requestId});
+   if(pathname==='/api/admin/catalog'&&req.method==='GET')
+    return sendJson(res,200,{ok:true,catalog:await admin.listAdminCatalog()});
+   const body=['POST','PUT','PATCH'].includes(req.method)?await readJson(req):{};
+   if(pathname==='/api/admin/catalog/products'&&req.method==='POST')
+    return sendJson(res,201,{ok:true,product:await admin.createProduct(user.id,body)});
+   let match=pathname.match(/^\\/api\\/admin\\/catalog\\/products\\/([0-9a-f-]{36})$/i);
+   if(match&&req.method==='PUT')
+    return sendJson(res,200,{ok:true,product:await admin.updateProduct(user.id,match[1],body)});
+   if(pathname==='/api/admin/catalog/categories'&&req.method==='POST')
+    return sendJson(res,201,{ok:true,category:await admin.createCategory(user.id,body)});
+   if(pathname==='/api/admin/catalog/courses'&&req.method==='POST')
+    return sendJson(res,201,{ok:true,course:await admin.createCourse(user.id,body)});
+   match=pathname.match(/^\\/api\\/admin\\/catalog\\/courses\\/([0-9a-f-]{36})\\/status$/i);
+   if(match&&req.method==='PATCH')
+    return sendJson(res,200,{ok:true,course:await admin.setCourseStatus(user.id,match[1],body.status)});
+   match=pathname.match(/^\\/api\\/admin\\/catalog\\/courses\\/([0-9a-f-]{36})\\/modules$/i);
+   if(match&&req.method==='POST')
+    return sendJson(res,201,{ok:true,module:await admin.createModule(user.id,match[1],body)});
+   match=pathname.match(/^\\/api\\/admin\\/catalog\\/modules\\/([0-9a-f-]{36})\\/lessons$/i);
+   if(match&&req.method==='POST')
+    return sendJson(res,201,{ok:true,lesson:await admin.createLesson(user.id,match[1],body)});
+   match=pathname.match(/^\\/api\\/admin\\/catalog\\/lessons\\/([0-9a-f-]{36})\\/publish$/i);
+   if(match&&req.method==='PATCH')
+    return sendJson(res,200,{ok:true,lesson:await admin.setLessonPublished(user.id,match[1],body.published)});
+   if(pathname==='/api/admin/catalog/questions'&&req.method==='POST')
+    return sendJson(res,201,{ok:true,question:await admin.createDailyQuestion(user.id,body)});
+   match=pathname.match(/^\\/api\\/admin\\/catalog\\/questions\\/([0-9a-f-]{36})\\/active$/i);
+   if(match&&req.method==='PATCH')
+    return sendJson(res,200,{ok:true,question:await admin.setQuestionActive(user.id,match[1],body.active)});
+   return sendJson(res,404,{error:{code:'NOT_FOUND',message:'Action catalogue introuvable.'},requestId});
+  }
   if((pathname==='/api/admin/overview'||pathname==='/api/admin/users')&&req.method==='GET'){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
