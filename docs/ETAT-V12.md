@@ -19,6 +19,16 @@ Les routes métier `/api/*` répondent volontairement avec HTTP 503 tant que l'a
 
 **Ne pas connecter cette branche à Render en production et ne pas exécuter les migrations sur la base Neon de production.**
 
+## Authentification — première version écrite
+
+- Inscription avec numéro international, mot de passe robuste et code de parrainage facultatif.
+- Hachage des mots de passe avec scrypt et sel aléatoire.
+- Sessions opaques de 256 bits, jetons hachés en base et cookie HttpOnly/SameSite.
+- Connexion, déconnexion et lecture de session (`/api/register`, `/api/login`, `/api/logout`, `/api/me`).
+- Protection contre les tentatives répétées par numéro et adresse IP, avec verrouillage temporaire.
+- Création atomique des deux portefeuilles à l'inscription.
+- Tests de validation des numéros et mots de passe ajoutés.
+
 ## À faire avant toute recette
 
 1. Réimplémenter l'inscription, la connexion, les sessions et les rôles.
