@@ -6,6 +6,7 @@ const wallet=require('./backend/wallet/service');
 const admin=require('./backend/admin/service');
 const catalog=require('./backend/catalog/service');
 const engagement=require('./backend/engagement/service');
+const notifications=require('./backend/notifications/service');
 const PORT=Number(process.env.PORT)||3000,PUBLIC_DIR=path.join(__dirname,'public');
 const COOKIE='fructy_session',MAX_BODY=32*1024;
 const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon'};
@@ -132,6 +133,34 @@ const server=http.createServer(async(req,res)=>{
    return sendJson(res,200,{ok:true,answer:await engagement.submitDailyAnswer(user.id,dailyAnswer[1],body.selectedOption)});
   }
 
+
+  if(pathname==='/api/notifications'&&req.method==='GET'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   const url=new URL(req.url,'http://localhost');
+   return sendJson(res,200,{ok:true,notifications:await notifications.listNotifications(user.id,url.searchParams.has('limit')?Number(url.searchParams.get('limit')):30)});
+  }
+  const notificationRead=pathname.match(/^\\/api\\/notifications\\/([0-9a-f-]{36})\\/read$/i);
+  if(notificationRead&&req.method==='PATCH'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   return sendJson(res,200,{ok:true,notification:await notifications.markNotificationRead(user.id,notificationRead[1])});
+  }
+  if(pathname==='/api/admin/notifications'&&req.method==='POST'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   if(user.role!=='admin')return sendJson(res,403,{error:{code:'FORBIDDEN',message:'Accès administrateur requis.'},requestId});
+   const body=await readJson(req);
+   return sendJson(res,201,{ok:true,result:await admin.sendNotification(user.id,body)});
+  }
+  const userStatus=pathname.match(/^\\/api\\/admin\\/users\\/([0-9a-f-]{36})\\/status$/i);
+  if(userStatus&&req.method==='PATCH'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   if(user.role!=='admin')return sendJson(res,403,{error:{code:'FORBIDDEN',message:'Accès administrateur requis.'},requestId});
+   const body=await readJson(req);
+   return sendJson(res,200,{ok:true,user:await admin.setUserStatus(user.id,userStatus[1],body.status)});
+  }
   if(pathname.startsWith('/api/admin/catalog')){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
