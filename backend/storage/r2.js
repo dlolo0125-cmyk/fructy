@@ -1,7 +1,8 @@
 'use strict';
 
-const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, GetObjectCommand, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { randomUUID } = require('node:crypto');
 
 let client;
 function requiredEnv(name) {
@@ -40,6 +41,31 @@ function safeFilename(value) {
     .replace(/[ .]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 100) || 'fructy-download';
   return base + '.pdf';
 }
+function validatePdfUpload({ filename, size, contentType }) {
+  const name = String(filename || '').trim();
+  const bytes = Number(size);
+  if (!name || name.length > 240 || !/\.pdf$/i.test(name) ||
+      !Number.isSafeInteger(bytes) || bytes < 1 || bytes > 25 * 1024 * 1024 ||
+      String(contentType || '').toLowerCase() !== 'application/pdf') {
+    const error = new Error('Choisis un fichier PDF valide de 25 Mo maximum.');
+    error.status = 400;
+    error.code = 'INVALID_PDF_UPLOAD';
+    throw error;
+  }
+  return { key: 'products/' + randomUUID() + '.pdf', contentType: 'application/pdf' };
+}
+async function createUploadUrl(input) {
+  const bucket = requiredEnv('R2_BUCKET');
+  const upload = validatePdfUpload(input || {});
+  const command = new PutObjectCommand({
+    Bucket: bucket, Key: upload.key, ContentType: upload.contentType
+  });
+  return {
+    key: upload.key,
+    url: await getSignedUrl(getClient(), command, { expiresIn: 300 }),
+    expiresIn: 300
+  };
+}
 async function createDownloadUrl(key, productName) {
   const bucket = requiredEnv('R2_BUCKET');
   const objectKey = String(key || '').trim();
@@ -56,4 +82,4 @@ async function createDownloadUrl(key, productName) {
   });
   return getSignedUrl(getClient(), command, { expiresIn: 60 });
 }
-module.exports = { createDownloadUrl, safeFilename };
+module.exports = { createDownloadUrl, createUploadUrl, validatePdfUpload, safeFilename };
