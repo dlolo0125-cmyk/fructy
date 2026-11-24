@@ -14,7 +14,8 @@ Dernière mise à jour : 24 novembre 2026.
 - Tests unitaires de validation des montants entiers.
 - Services de portefeuille : consultation des soldes et historique paginé.
 - Demandes de retrait sur le portefeuille de gains avec réservation atomique des fonds, ledger immuable et clé d'idempotence.
-- Routes authentifiées `GET /api/wallets`, `GET /api/wallets/transactions` et `POST /api/withdrawals`.
+- Création d'intentions de dépôt `pending` via SasPay ou Chariow, avec idempotence et numéro payeur facultatif. Aucun appel fournisseur ni crédit automatique n'est effectué.
+- Routes authentifiées `GET /api/wallets`, `GET /api/wallets/transactions` et `POST /api/withdrawals` et `POST /api/deposits`.
 - Validation des clés d'idempotence, méthodes/destinations de retrait et paramètres de pagination.
 
 ## Important : environnement de développement uniquement
@@ -37,7 +38,7 @@ Les routes métier disponibles sont encore une base de développement. Elles ne 
 
 1. Réimplémenter l'inscription, la connexion, les sessions et les rôles.
 2. Tester les services de portefeuille et ledger transactionnels sur PostgreSQL.
-3. Construire les dépôts et connecter les retraits aux prestataires uniquement après implémentation des webhooks signés et tests d'idempotence.
+3. Connecter les intentions de dépôt aux API SasPay/Chariow et créditer uniquement après vérification cryptographique des webhooks signés, rapprochement montant/devise/référence et tests anti-rejeu.
 4. Ajouter les accès PDF privés, les règles de récompenses et l'administration.
 5. Réimplémenter les formations, quiz, progression et certificats.
 6. Construire les interfaces client et administration V12.
