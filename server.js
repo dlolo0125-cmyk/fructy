@@ -168,6 +168,14 @@ const server=http.createServer(async(req,res)=>{
    const body=await readJson(req);
    return sendJson(res,200,{ok:true,user:await admin.setUserStatus(user.id,userStatus[1],body.status)});
   }
+  if(pathname==='/api/admin/storage/upload-url'&&req.method==='POST'){
+   const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
+   if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
+   if(user.role!=='admin')return sendJson(res,403,{error:{code:'FORBIDDEN',message:'Accès administrateur requis.'},requestId});
+   const body=await readJson(req);
+   const storage=require('./backend/storage/r2');
+   return sendJson(res,201,{ok:true,upload:await storage.createUploadUrl(body)});
+  }
   if(pathname.startsWith('/api/admin/catalog')){
    const token=readCookie(req.headers.cookie,COOKIE),user=await auth.authenticate(token);
    if(!user)return sendJson(res,401,{error:{code:'UNAUTHENTICATED',message:'Session absente ou expirée.'},requestId});
