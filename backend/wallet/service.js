@@ -134,6 +134,109 @@ async function requestWithdrawal(userId, input) {
   });
 }
 
+
+function validateWithdrawalReview(withdrawalId, decision, note = '') {
+  const id = String(withdrawalId ?? '').trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+    throw new TypeError('Identifiant de retrait invalide.');
+  }
+  if (!['approve', 'reject'].includes(decision)) {
+    throw new TypeError('Décision invalide : utilise approve ou reject.');
+  }
+  const cleanNote = String(note ?? '').trim();
+  if (cleanNote.length > 500 || /[\\0]/.test(cleanNote)) {
+    throw new TypeError('La note ne peut pas dépasser 500 caractères.');
+  }
+  if (decision === 'reject' && !cleanNote) {
+    throw new TypeError('Une justification est obligatoire pour refuser un retrait.');
+  }
+  return { id, decision, note: cleanNote };
+}
+
+async function listWithdrawals(options = {}) {
+  const { limit, before } = pageOptions(options);
+  const status = options.status == null || options.status === '' ? null : String(options.status);
+  if (status && !['pending', 'approved', 'paid', 'rejected', 'cancelled'].includes(status)) {
+    throw new TypeError('Filtre de statut invalide.');
+  }
+  const result = await query(
+    `SELECT w.id,w.user_id,u.phone,w.wallet_id,w.amount,w.method,w.destination,
+            w.status,w.created_at,w.reviewed_at,w.reviewed_by
+     FROM withdrawals w JOIN users u ON u.id=w.user_id
+     WHERE ($1::text IS NULL OR w.status=$1)
+       AND ($2::timestamptz IS NULL OR w.created_at<$2)
+     ORDER BY w.created_at DESC,w.id DESC LIMIT $3`,
+    [status, before, limit]
+  );
+  return result.rows.map(row => ({ ...row, amount: String(row.amount) }));
+}
+
+async function reviewWithdrawal(adminId, withdrawalId, decision, note = '') {
+  const input = validateWithdrawalReview(withdrawalId, decision, note);
+  return transaction(async tx => {
+    const found = await tx.query(
+      `SELECT id,user_id,wallet_id,amount,status
+       FROM withdrawals WHERE id=$1 FOR UPDATE`,
+      [input.id]
+    );
+    if (!found.rowCount) {
+      const error = new Error('Demande de retrait introuvable.');
+      error.status = 404;
+      throw error;
+    }
+    const withdrawal = found.rows[0];
+    if (withdrawal.status !== 'pending') {
+      const error = new Error('Cette demande a déjà été traitée.');
+      error.status = 409;
+      throw error;
+    }
+
+    if (input.decision === 'reject') {
+      const wallet = await tx.query(
+        `SELECT id FROM wallets WHERE id=$1 AND user_id=$2
+         AND wallet_type='earnings' AND currency='XOF' FOR UPDATE`,
+        [withdrawal.wallet_id, withdrawal.user_id]
+      );
+      if (!wallet.rowCount) {
+        const error = new Error('Portefeuille de gains introuvable pour restituer les fonds.');
+        error.status = 500;
+        throw error;
+      }
+      await tx.query(
+        'UPDATE wallets SET balance=balance+$1,updated_at=now() WHERE id=$2',
+        [withdrawal.amount, withdrawal.wallet_id]
+      );
+      await tx.query(
+        `INSERT INTO ledger_entries(wallet_id,user_id,entry_type,amount,currency,
+          reference_type,reference_id,idempotency_key,description)
+         VALUES($1,$2,'withdrawal_release',$3,'XOF','withdrawal',$4,$5,$6)`,
+        [withdrawal.wallet_id, withdrawal.user_id, withdrawal.amount, withdrawal.id,
+         `withdrawal-release:${withdrawal.id}`, 'Restitution après refus du retrait']
+      );
+    }
+
+    const nextStatus = input.decision === 'approve' ? 'approved' : 'rejected';
+    const updated = await tx.query(
+      `UPDATE withdrawals SET status=$1,reviewed_by=$2,reviewed_at=now()
+       WHERE id=$3 AND status='pending'
+       RETURNING id,user_id,amount,status,method,created_at,reviewed_at,reviewed_by`,
+      [nextStatus, adminId, withdrawal.id]
+    );
+    if (!updated.rowCount) {
+      const error = new Error('La demande a été traitée par une autre opération.');
+      error.status = 409;
+      throw error;
+    }
+    await tx.query(
+      `INSERT INTO admin_audit_logs(admin_id,action,target_type,target_id,details)
+       VALUES($1,$2,'withdrawal',$3,$4::jsonb)`,
+      [adminId, input.decision === 'approve' ? 'withdrawal.approved' : 'withdrawal.rejected',
+       withdrawal.id, JSON.stringify({ note: input.note, amount: String(withdrawal.amount) })]
+    );
+    return { ...updated.rows[0], amount: String(updated.rows[0].amount), note: input.note };
+  });
+}
+
 async function createDepositIntent(userId, input) {
   const amount = parseAmount(input.amount, { min: 100, max: 1000000000 });
   const provider = String(input.provider ?? '');
@@ -326,6 +429,6 @@ async function processDepositWebhook(provider, rawBody, signature) {
 }
 
 module.exports = {
-  getWallets, getTransactions, requestWithdrawal, createDepositIntent, processDepositWebhook, verifyWebhookSignature,
-  validateIdempotencyKey, validateDestination, pageOptions
+  getWallets, getTransactions, requestWithdrawal, listWithdrawals, reviewWithdrawal, createDepositIntent, processDepositWebhook, verifyWebhookSignature,
+  validateIdempotencyKey, validateDestination, validateWithdrawalReview, pageOptions
 };
