@@ -13,7 +13,7 @@ function amountField(value, label, allowZero = true) {
   const raw = String(value ?? '');
   if (!/^(0|[1-9][0-9]*)$/.test(raw)) throw new TypeError(label + ' doit être un entier positif.');
   const amount = BigInt(raw);
-  if ((!allowZero && amount === 0n) || amount > 9000000000000000n) throw new TypeError(label + ' hors limites.');
+  if ((!allowZero && amount === 0n) || amount > 9007199254740991n) throw new TypeError(label + ' hors limites.');
   return amount.toString();
 }
 function intField(value, label, min, max) {
@@ -23,7 +23,7 @@ function intField(value, label, min, max) {
 }
 function slugify(value) {
   const slug=textField(value,'Titre',180).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,180);
+    .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,180);
   if(!slug) throw new TypeError('Slug invalide.');
   return slug;
 }
