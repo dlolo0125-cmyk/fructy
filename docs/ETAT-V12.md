@@ -22,6 +22,10 @@ Dernière mise à jour : 24 novembre 2026.
 - Validation des clés d'idempotence, méthodes/destinations de retrait et paramètres de pagination.
 - Administration des retraits : liste filtrable réservée aux admins, approbation sans faux statut de paiement, refus avec restitution atomique du solde et écriture ledger distincte, journal d'audit et protection contre les doubles décisions.
 
+## Création du premier administrateur
+
+Le script `npm run admin:bootstrap` crée un seul compte administrateur initial à partir de `ADMIN_PHONE` et `ADMIN_PASSWORD`. Il refuse de modifier les comptes si un administrateur existe déjà. Ne lance ce script qu'après migration d'une base V12 de test, avec des secrets forts stockés dans l'environnement serveur (jamais dans Git).
+
 ## Important : environnement de développement uniquement
 
 Les routes métier disponibles sont encore une base de développement. Elles ne sont pas prêtes pour la production : les tests PostgreSQL et la recette avec les vrais prestataires restent à réaliser. Le format de callback HMAC-SHA256 `X-Fructy-Signature` est un adaptateur de sécurité interne provisoire ; il ne faut pas supposer que SasPay ou Chariow émettent exactement ce format sans vérifier leur documentation officielle et leurs exemples de signature. Les pages HTML historiques sont conservées temporairement comme référence visuelle et contractuelle, elles ne constituent pas une interface V12 opérationnelle.
