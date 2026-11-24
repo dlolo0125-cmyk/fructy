@@ -56,7 +56,7 @@ async function listUsers(options = {}) {
 }
 
 async function listAdminCatalog() {
-  const [products,courses,categories,questions] = await Promise.all([
+  const [products,courses,categories,questions,modules,lessons] = await Promise.all([
     query('SELECT id,name,description,price::text,currency,access_days,daily_reward::text,published,file_key,created_at FROM products ORDER BY created_at DESC LIMIT 100'),
     query(`SELECT c.id,c.title,c.slug,c.description,c.price::text,c.currency,c.status,c.category_id,
       (SELECT count(*)::int FROM course_modules m WHERE m.course_id=c.id) AS module_count
