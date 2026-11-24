@@ -32,11 +32,13 @@ function getClient() {
   return client;
 }
 function safeFilename(value) {
-  const base = String(value || 'fructy-download')
-    .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+  const raw = String(value || 'fructy-download')
+    .replace(/\\/g, '/').split('/').pop() || 'fructy-download';
+  const stem = raw.replace(/\.pdf$/i, '');
+  const base = stem.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-zA-Z0-9._ -]/g, '').trim()
     .replace(/[ .]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 100) || 'fructy-download';
-  return base.endsWith('.pdf') ? base : base + '.pdf';
+  return base + '.pdf';
 }
 async function createDownloadUrl(key, productName) {
   const bucket = requiredEnv('R2_BUCKET');
